@@ -1,5 +1,4 @@
-# SCOTT+ 
-# Scientific RPN Calculator + Watch
+# SCOTT+ Scientific RPN Calculator + Watch
 
 Credit card sized scientific RPN calculator with watch. Hardware and firmware based on https://github.com/zooxo/scott.
 
