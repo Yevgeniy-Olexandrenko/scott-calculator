@@ -33,9 +33,29 @@ static int getbutton(void)
 static byte getkeycode(void)
 {
 	int b = getbutton();
+#if 0  
 	const byte keys[] = { KEY_16, KEY_15, KEY_14, KEY_13, KEY_12, KEY_11, KEY_10, KEY_9, KEY_8, KEY_7, KEY_6, KEY_5, KEY_4, KEY_3, KEY_2, KEY_1 };
 	if (b < 231)
 		return (NULL); // No key pressed
 	else
 		return (keys[(byte)(_exp_sin_asin(0.5 * log(b / 2 - 235), BITEXP) - 1)]); // Approximate keys with quadratic function
+#else
+  if (b < 231) return (NULL); // No key pressed
+  else if (b < 470) return (KEY_16);
+  else if (b < 488) return (KEY_15);
+  else if (b < 508) return (KEY_14);
+  else if (b < 529) return (KEY_13);
+  else if (b < 552) return (KEY_12);
+  else if (b < 578) return (KEY_11);
+  else if (b < 606) return (KEY_10);
+  else if (b < 637) return (KEY_9);
+  else if (b < 661) return (KEY_8);
+  else if (b < 708) return (KEY_7);
+  else if (b < 751) return (KEY_6);
+  else if (b < 799) return (KEY_5);
+  else if (b < 853) return (KEY_4);
+  else if (b < 915) return (KEY_3);
+  else if (b < 986) return (KEY_2);
+  else return (KEY_1);
+#endif   
 }
