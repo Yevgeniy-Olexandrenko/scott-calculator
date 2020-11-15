@@ -21,7 +21,7 @@
 #define KEY_16 '=' // ENTER
 
 // Calculate exp, sin or asin
-static double _exp_sin_asin(double f, byte nr);
+static float _exp_sin_asin(float f, byte nr);
 
 // Returns analog value measured on keyboard pin
 static int getbutton(void)

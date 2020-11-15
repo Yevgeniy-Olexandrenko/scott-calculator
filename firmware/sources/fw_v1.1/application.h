@@ -33,23 +33,23 @@
 static byte key;											 // Holds entered key
 static byte oldkey;											 // Old key - use for debouncing
 static char sbuf[MAXSTRBUF];								 // Holds string to print
-static double stack[STACKSIZE];								 // Float stack (XYZT) and memory
-static boolean isnewnumber = true;							 // True if stack has to be lifted before entering a new number
-static boolean ispushed = false;							 // True if stack was already pushed by ENTER
+static float stack[STACKSIZE];								 // Float stack (XYZT) and memory
+static bool isnewnumber = true;							 // True if stack has to be lifted before entering a new number
+static bool ispushed = false;							 // True if stack was already pushed by ENTER
 static byte decimals = 0;									 // Number of decimals entered - used for input after decimal dot
-static boolean isdot = false;								 // True if dot was pressed and decimals will be entered
-static boolean isf = false;									 // true if f is pressed
-static boolean ismenu = false;								 // True if menu demanded
+static bool isdot = false;								 // True if dot was pressed and decimals will be entered
+static bool isf = false;									 // true if f is pressed
+static bool ismenu = false;								 // True if menu demanded
 static byte select = 0;										 // Selection number or playstring position
-static boolean isplaystring = false;						 // True if string should be played
+static bool isplaystring = false;						 // True if string should be played
 static byte brightness;										 // Contrast
-static boolean isfirstrun = true;							 // Allows first run of loop and printscreen without key query
+static bool isfirstrun = true;							 // Allows first run of loop and printscreen without key query
 static long timestamp = 0;									 // Needed for timing of power manangement
 static int recptr = 0;										 // Pointer to recording step
 static byte recslot = 0;									 // Slot number for recording to EEPROM
-static boolean isrec = false, isplay = false;				 // True, if "Type Recorder" records or plays
-static double sum[STACKSIZE] = {0.0, 0.0, 0.0, 0.0, 0.0};	 // Memory to save statistic sums
-static double shadow[STACKSIZE] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Shadow memory (buffer) for stack
+static bool isrec = false, isplay = false;				 // True, if "Type Recorder" records or plays
+static float sum[STACKSIZE] = {0.0, 0.0, 0.0, 0.0, 0.0};	 // Memory to save statistic sums
+static float shadow[STACKSIZE] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Shadow memory (buffer) for stack
 static byte restore;										 // Position of stack salvation (including mem)
 
 const char c0[] PROGMEM = ",X";	  // Squareroot
@@ -168,8 +168,8 @@ static void _p2r(void);
 static void _recplay(void);
 static void _play(void);
 static void _playstring(byte slot);
-static double _pow(void);
-static double _pow10(int8_t e);
+static float _pow(void);
+static float _pow10(int8_t e);
 static void _pull(void);
 static void _pullupper(void);
 static void _push(void);
@@ -224,17 +224,17 @@ static void (*dispatch[])(void) = {
 static void savestack(void)
 { // Save whole stack to EEPROM
 	byte *p = (byte *)stack;
-	for (byte i = 0; i < STACKSIZE * sizeof(double); i++)
+	for (byte i = 0; i < STACKSIZE * sizeof(float); i++)
 		EEPROM[EESTACK + i] = *p++;
 }
 static void loadstack(void)
 { // Load whole stack from EEMPROM
 	byte *p = (byte *)stack;
-	for (byte i = 0; i < sizeof(double) * STACKSIZE; i++)
+	for (byte i = 0; i < sizeof(float) * STACKSIZE; i++)
 		*p++ = EEPROM[EESTACK + i];
 }
 
-static boolean is09(void)
+static bool is09(void)
 { // Checks, if stack[0] is between 0 and 9
 	return (stack[0] >= 0 && stack[0] <= 9);
 }
@@ -446,16 +446,16 @@ static void _playstring(byte slot)
 	isnewnumber = isplaystring = true;
 	ispushed = isdot = false;
 }
-static double _pow(void)
+static float _pow(void)
 { // POW
 	_swap();
 	_ln();
 	_mult();
 	_exp();
 }
-static double _pow10(int8_t e)
+static float _pow10(int8_t e)
 { // POW10 10^x
-	double f = 1.0;
+	float f = 1.0;
 	if (e > 0)
 		while (e--)
 			f *= 10;
@@ -466,15 +466,15 @@ static double _pow10(int8_t e)
 }
 void _pull(void)
 { // PULL
-	memcpy(&stack[0], &stack[1], (STACKSIZE - 2) * sizeof(double));
+	memcpy(&stack[0], &stack[1], (STACKSIZE - 2) * sizeof(float));
 }
 static void _pullupper(void)
 { // PULLUPPER
-	memcpy(&stack[1], &stack[2], (STACKSIZE - 3) * sizeof(double));
+	memcpy(&stack[1], &stack[2], (STACKSIZE - 3) * sizeof(float));
 }
 static void _push(void)
 { // PUSH
-	memmove(&stack[1], &stack[0], (STACKSIZE - 2) * sizeof(double));
+	memmove(&stack[1], &stack[0], (STACKSIZE - 2) * sizeof(float));
 }
 static void _pv(void)
 { // PV
@@ -502,7 +502,7 @@ static void _rotup(void)
 }
 static void _rot(void)
 { // ROT
-	double tmp = stack[0];
+	float tmp = stack[0];
 	_pull();
 	stack[STACKSIZE - 2] = tmp;
 }
@@ -518,7 +518,7 @@ static void _setconst(void)
 }
 static void _shadowsave(void)
 { // Save stack to shadow buffer (including mem)
-	memcpy(shadow, stack, STACKSIZE * sizeof(double));
+	memcpy(shadow, stack, STACKSIZE * sizeof(float));
 }
 static void _shadowload1(void)
 { // Load stack from shadow buffer from pos 1
@@ -530,7 +530,7 @@ static void _shadowload2(void)
 }
 static void _shadowload(byte pos)
 { // Load higher stack from shadow buffer
-	memcpy(&stack[pos], &shadow[pos], (STACKSIZE - pos) * sizeof(double));
+	memcpy(&stack[pos], &shadow[pos], (STACKSIZE - pos) * sizeof(float));
 }
 static void _sin(void)
 { // SIN
@@ -582,11 +582,11 @@ static void _sum1(void)
 }
 static void _sum2stack(void)
 { // Copies sum[] to stack[] (including mem)
-	memmove(stack, sum, STACKSIZE * sizeof(double));
+	memmove(stack, sum, STACKSIZE * sizeof(float));
 }
 static void _swap(void)
 { // SWAP
-	double tmp = stack[0];
+	float tmp = stack[0];
 	stack[0] = stack[1];
 	stack[1] = tmp;
 }
@@ -599,15 +599,15 @@ static void _tanh(void)
 	_playstring(PSTANH);
 }
 
-static double _exp_sin_asin(double f, byte nr)
+static float _exp_sin_asin(float f, byte nr)
 {								 // Calculate exp, sin or asin
-	double result = f, frac = f; // Start values for sin or asin
+	float result = f, frac = f; // Start values for sin or asin
 	if (nr == BITEXP)
 		result = frac = 1.0; // Start values for exp
 	for (int i = 1; _abs(frac) > TINYNUMBER && i < MAXITERATE; i++)
 	{
 		int i2 = 2 * i, i2p = 2 * i + 1, i2m = 2 * i - 1, i2m2 = i2m * i2m;
-		double ffi2i2p = f * f / (i2 * i2p);
+		float ffi2i2p = f * f / (i2 * i2p);
 		if (nr == BITEXP)
 			frac *= f / i; // Fraction for exp
 		else if (nr == BITSIN)
@@ -619,7 +619,7 @@ static double _exp_sin_asin(double f, byte nr)
 	return (result);
 }
 
-static void printfloat(double f, byte mh, byte y)
+static void printfloat(float f, byte mh, byte y)
 {						 // Print float with mantissa height (mh) at line y
 	long m;				 // Mantissa
 	int8_t e;			 // Exponent

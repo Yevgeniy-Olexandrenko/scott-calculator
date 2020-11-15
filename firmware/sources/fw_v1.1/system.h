@@ -9,7 +9,7 @@
 static byte eachframemillis, thisframestart, lastframedurationms;
 
 // True if frame was just rendered
-static boolean justrendered;
+static bool justrendered;
 
 // Shifts printed character down
 static byte printbitshift = 0;
@@ -140,7 +140,7 @@ static void idle(void)
 }
 
 // Wait (idle) for next frame
-static boolean nextframe(void)
+static bool nextframe(void)
 {
 	byte now = (byte)millis(), framedurationms = now - thisframestart;
 	if (justrendered)
