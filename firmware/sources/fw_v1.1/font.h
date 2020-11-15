@@ -4,7 +4,7 @@
 #define FONTWIDTH  5
 
 // Edged font
-const byte font[] PROGMEM =
+const uint8_t font[] PROGMEM =
 {
 	// No ascii signs below 44 (',') to save memory (flash)
 	0x10, 0x7f, 0x01, 0x01, 0x01, // , squareroot

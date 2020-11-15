@@ -21,7 +21,7 @@
 #define KEY_16 '=' // ENTER
 
 // Calculate exp, sin or asin
-static float _exp_sin_asin(float f, byte nr);
+static float _exp_sin_asin(float f, uint8_t nr);
 
 // Returns analog value measured on keyboard pin
 static int getbutton(void)
@@ -30,15 +30,15 @@ static int getbutton(void)
 }
 
 // Returns key character due to analog value
-static byte getkeycode(void)
+static uint8_t getkeycode(void)
 {
 	int b = getbutton();
 #if 0  
-	const byte keys[] = { KEY_16, KEY_15, KEY_14, KEY_13, KEY_12, KEY_11, KEY_10, KEY_9, KEY_8, KEY_7, KEY_6, KEY_5, KEY_4, KEY_3, KEY_2, KEY_1 };
+	const uint8_t keys[] = { KEY_16, KEY_15, KEY_14, KEY_13, KEY_12, KEY_11, KEY_10, KEY_9, KEY_8, KEY_7, KEY_6, KEY_5, KEY_4, KEY_3, KEY_2, KEY_1 };
 	if (b < 231)
 		return (NULL); // No key pressed
 	else
-		return (keys[(byte)(_exp_sin_asin(0.5 * log(b / 2 - 235), BITEXP) - 1)]); // Approximate keys with quadratic function
+		return (keys[(uint8_t)(_exp_sin_asin(0.5 * log(b / 2 - 235), BITEXP) - 1)]); // Approximate keys with quadratic function
 #else
   if (b < 231) return (NULL); // No key pressed
   else if (b < 470) return (KEY_16);

@@ -30,27 +30,27 @@
 #define _huns(x) (((x) / 100) % 10)	   // Calculates hundreds unit
 #define _tsds(x) (((x) / 1000) % 10)   // Calculates thousands unit
 
-static byte key;											 // Holds entered key
-static byte oldkey;											 // Old key - use for debouncing
+static uint8_t key;											 // Holds entered key
+static uint8_t oldkey;											 // Old key - use for debouncing
 static char sbuf[MAXSTRBUF];								 // Holds string to print
 static float stack[STACKSIZE];								 // Float stack (XYZT) and memory
 static bool isnewnumber = true;							 // True if stack has to be lifted before entering a new number
 static bool ispushed = false;							 // True if stack was already pushed by ENTER
-static byte decimals = 0;									 // Number of decimals entered - used for input after decimal dot
+static uint8_t decimals = 0;									 // Number of decimals entered - used for input after decimal dot
 static bool isdot = false;								 // True if dot was pressed and decimals will be entered
 static bool isf = false;									 // true if f is pressed
 static bool ismenu = false;								 // True if menu demanded
-static byte select = 0;										 // Selection number or playstring position
+static uint8_t select = 0;										 // Selection number or playstring position
 static bool isplaystring = false;						 // True if string should be played
-static byte brightness;										 // Contrast
+static uint8_t brightness;										 // Contrast
 static bool isfirstrun = true;							 // Allows first run of loop and printscreen without key query
 static long timestamp = 0;									 // Needed for timing of power manangement
 static int recptr = 0;										 // Pointer to recording step
-static byte recslot = 0;									 // Slot number for recording to EEPROM
+static uint8_t recslot = 0;									 // Slot number for recording to EEPROM
 static bool isrec = false, isplay = false;				 // True, if "Type Recorder" records or plays
 static float sum[STACKSIZE] = {0.0, 0.0, 0.0, 0.0, 0.0};	 // Memory to save statistic sums
 static float shadow[STACKSIZE] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Shadow memory (buffer) for stack
-static byte restore;										 // Position of stack salvation (including mem)
+static uint8_t restore;										 // Position of stack salvation (including mem)
 
 const char c0[] PROGMEM = ",X";	  // Squareroot
 const char c1[] PROGMEM = "Y;";	  // Raise to the power of
@@ -167,7 +167,7 @@ static void _numinput(void);
 static void _p2r(void);
 static void _recplay(void);
 static void _play(void);
-static void _playstring(byte slot);
+static void _playstring(uint8_t slot);
 static float _pow(void);
 static float _pow10(int8_t e);
 static void _pull(void);
@@ -184,7 +184,7 @@ static void _setconst(void);
 static void _shadowsave(void);
 static void _shadowload1(void);
 static void _shadowload2(void);
-static void _shadowload(byte pos);
+static void _shadowload(uint8_t pos);
 static void _sin(void);
 static void _sinh(void);
 static void _sleep(void);
@@ -223,14 +223,14 @@ static void (*dispatch[])(void) = {
 
 static void savestack(void)
 { // Save whole stack to EEPROM
-	byte *p = (byte *)stack;
-	for (byte i = 0; i < STACKSIZE * sizeof(float); i++)
+	uint8_t *p = (uint8_t *)stack;
+	for (uint8_t i = 0; i < STACKSIZE * sizeof(float); i++)
 		EEPROM[EESTACK + i] = *p++;
 }
 static void loadstack(void)
 { // Load whole stack from EEMPROM
-	byte *p = (byte *)stack;
-	for (byte i = 0; i < sizeof(float) * STACKSIZE; i++)
+	uint8_t *p = (uint8_t *)stack;
+	for (uint8_t i = 0; i < sizeof(float) * STACKSIZE; i++)
 		*p++ = EEPROM[EESTACK + i];
 }
 
@@ -277,7 +277,7 @@ static void _batt(void)
 	ADCSRA |= _BV(ADSC);
 	while (bit_is_set(ADCSRA, ADSC))
 		; // Measuring
-	byte high = ADCH;
+	uint8_t high = ADCH;
 	stack[0] = 1125.3 / ((high << 8) | ADCL); // Calculate Vcc in V - 1125.3 = 1.1 * 1023
 }
 static void _ce(void)
@@ -315,7 +315,7 @@ static void _cmdkey(void)
 { // CMDKEY
 	if (is09)
 	{
-		byte tmp = stack[0];
+		uint8_t tmp = stack[0];
 		_pull();
 		(*dispatch[EEPROM.read(EECMDKEY + tmp)])();
 	}
@@ -323,7 +323,7 @@ static void _cmdkey(void)
 static void _const(void)
 { // CONST
 	if (is09)
-		EEPROM.get(EECONST + (byte)stack[0], stack[0]);
+		EEPROM.get(EECONST + (uint8_t)stack[0], stack[0]);
 }
 static void _contrast(void)
 { // CONTRAST
@@ -437,7 +437,7 @@ static void _play(void)
 	_recplay();
 	isplay = isnewnumber = true;
 }
-static void _playstring(byte slot)
+static void _playstring(uint8_t slot)
 { // PLAYSTRING
 	restore = slot >= RESTORE2 ? 2 : 1;
 	_shadowsave();												// Save stack for salvation
@@ -497,7 +497,7 @@ static void _rec(void)
 }
 static void _rotup(void)
 { // ROTup
-	for (byte i = 0; i < STACKSIZE - 2; i++)
+	for (uint8_t i = 0; i < STACKSIZE - 2; i++)
 		_rot();
 }
 static void _rot(void)
@@ -509,12 +509,12 @@ static void _rot(void)
 static void _setcmdkey(void)
 { // SETCMDKEY
 	if (is09)
-		EEPROM.write(EECMDKEY + (byte)stack[0], (byte)stack[1]);
+		EEPROM.write(EECMDKEY + (uint8_t)stack[0], (uint8_t)stack[1]);
 }
 static void _setconst(void)
 { // SETCONST
 	if (is09)
-		EEPROM.put(EECONST + (byte)stack[0], stack[1]);
+		EEPROM.put(EECONST + (uint8_t)stack[0], stack[1]);
 }
 static void _shadowsave(void)
 { // Save stack to shadow buffer (including mem)
@@ -528,7 +528,7 @@ static void _shadowload2(void)
 { // Load stack from shadow buffer from pos 2
 	_shadowload(2);
 }
-static void _shadowload(byte pos)
+static void _shadowload(uint8_t pos)
 { // Load higher stack from shadow buffer
 	memcpy(&stack[pos], &shadow[pos], (STACKSIZE - pos) * sizeof(float));
 }
@@ -575,7 +575,7 @@ static void _sum(void)
 }
 static void _sum1(void)
 { // SUM addon
-	for (byte i = 0; i < STACKSIZE; i++)
+	for (uint8_t i = 0; i < STACKSIZE; i++)
 		sum[i] += stack[i];
 	_sum2stack(); // Show n
 	_rcl();
@@ -599,7 +599,7 @@ static void _tanh(void)
 	_playstring(PSTANH);
 }
 
-static float _exp_sin_asin(float f, byte nr)
+static float _exp_sin_asin(float f, uint8_t nr)
 {								 // Calculate exp, sin or asin
 	float result = f, frac = f; // Start values for sin or asin
 	if (nr == BITEXP)
@@ -619,7 +619,7 @@ static float _exp_sin_asin(float f, byte nr)
 	return (result);
 }
 
-static void printfloat(float f, byte mh, byte y)
+static void printfloat(float f, uint8_t mh, uint8_t y)
 {						 // Print float with mantissa height (mh) at line y
 	long m;				 // Mantissa
 	int8_t e;			 // Exponent
@@ -633,7 +633,7 @@ static void printfloat(float f, byte mh, byte y)
 	m = (f / _pow10(e - 5)) + 0.5;		 // * Create mantissa
 	if (m > 0 && m < 1e5)				 // Change (n-1)-digit-mantissa to n digits
 		m = (f / _pow10(--e - 5)) + 0.5; // "New" mantissa
-	for (byte i = 6; i > 0; i--)
+	for (uint8_t i = 6; i > 0; i--)
 	{ // Print mantissa
 		sbuf[i] = _ones(m) + '0';
 		m /= 10;
@@ -647,27 +647,27 @@ static void printfloat(float f, byte mh, byte y)
 	printcat('.', SIZEM, mh, 23, y);
 	printcat(sbuf[1], SIZEM, mh, 12, y);
 
-	byte nonzero = false; // Suppress trailing zeros
-	for (byte i = 6; i > 1; i--)
+	uint8_t nonzero = false; // Suppress trailing zeros
+	for (uint8_t i = 6; i > 1; i--)
 		if (sbuf[i] != '0' || nonzero)
 		{
 			nonzero = true;
 			printcat(sbuf[i], SIZEM, mh, 12 * i + 8, y);
 		}
-	for (byte i = 7; i < 10; i++)
+	for (uint8_t i = 7; i < 10; i++)
 		printcat(sbuf[i], SIZEM, SIZEM, 12 * i + 10, 0);
 }
 
 static void printscreen(void)
 {					 // Print screen due to state
-	byte mh = SIZEM; // Mantissa height
+	uint8_t mh = SIZEM; // Mantissa height
 	cls();
 	printbitshift = 1; // Shift second line one pixel down
 	if (isplaystring || isplay)
 		printsat("RUN", SIZEM, SIZEM, 0, 2); // Print running message
 	else if (ismenu)
 	{ // Print MENU above F-keys (789)
-		for (byte i = 0; i < FKEYNR; i++)
+		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
 			strcpy_P(sbuf, (char *)pgm_read_word(&(cmd[select * FKEYNR + i])));
 			printsat(sbuf, SIZEM, SIZEM, 47 * i, 2);

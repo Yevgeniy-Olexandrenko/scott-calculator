@@ -6,16 +6,16 @@
 #define SIZEL 0x04   // Printing size
 
 // Framing times
-static byte eachframemillis, thisframestart, lastframedurationms;
+static uint8_t eachframemillis, thisframestart, lastframedurationms;
 
 // True if frame was just rendered
 static bool justrendered;
 
 // Shifts printed character down
-static byte printbitshift = 0;
+static uint8_t printbitshift = 0;
 
 // Expand 4 bits (lower nibble)
-static byte expand4bit(byte b)
+static uint8_t expand4bit(uint8_t b)
 {							   // 0000abcd
 	b = (b | (b << 2)) & 0x33; // 00ab00cd
 	b = (b | (b << 1)) & 0x55; // 0a0b0c0d
@@ -23,26 +23,26 @@ static byte expand4bit(byte b)
 }
 
 // Expand 2 bits
-static byte expand2bit(byte b)
+static uint8_t expand2bit(uint8_t b)
 {							   // 000000ab
 	b = (b | (b << 3)) & 0x11; // 000a000b
-	for (byte i = 0; i < 3; i++)
+	for (uint8_t i = 0; i < 3; i++)
 		b |= (b << 1); // aaaabbbb
 	return (b);
 }
 
 // Delay (with timer) in ms with 8 bit duration
-static void delayshort(byte ms)
+static void delayshort(uint8_t ms)
 {
 	long t = millis();
-	while ((byte)(millis() - t) < ms);
+	while ((uint8_t)(millis() - t) < ms);
 }
 
 // Print char c with width and height (1, 2 or 4)
-static void printc(byte c, byte w, byte h)
+static void printc(uint8_t c, uint8_t w, uint8_t h)
 {
-	byte tmpx = dx;
-	for (byte k = 0; k < h; k++)
+	uint8_t tmpx = dx;
+	for (uint8_t k = 0; k < h; k++)
 	{ // One byte, two nibbles or 4 pairs of bits
 		if (k > 0)
 		{			   // Manage cursor position, if size >1
@@ -50,15 +50,15 @@ static void printc(byte c, byte w, byte h)
 			dy++;	   // Increment y position/page
 			dsetcursor(dx, dy);
 		}
-		for (byte j = 0; j < FONTWIDTH; j++)
+		for (uint8_t j = 0; j < FONTWIDTH; j++)
 		{																						// Fontbyte - shifted one pixel down (if applicable)
-			byte tmp = pgm_read_byte(&font[FONTWIDTH * (c - FONTOFFSET) + j]) << printbitshift; // Fontbyte
+			uint8_t tmp = pgm_read_byte(&font[FONTWIDTH * (c - FONTOFFSET) + j]) << printbitshift; // Fontbyte
 			if (h == SIZEM)
 				tmp = expand4bit((tmp >> (k * 4)) & 0x0f); // Expand 0000abcd
 			else if (h == SIZEL)
 				tmp = expand2bit((tmp >> (k * 2)) & 0x03); // Expand 000000ab
 			dsenddatastart();
-			for (byte i = 0; i < w; i++)
+			for (uint8_t i = 0; i < w; i++)
 				dsenddatabyte(tmp);
 			dsendstop();
 		}
@@ -66,22 +66,22 @@ static void printc(byte c, byte w, byte h)
 }
 
 // Print sized char c at (x|y)
-static void printcat(byte c, byte w, byte h, byte x, byte y)
+static void printcat(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
 	printc(c, w, h);
 }
 
 // Print string
-static void prints(char *s, byte w, byte h)
+static void prints(char *s, uint8_t w, uint8_t h)
 {
-	byte tmpx = dx, tmpy = dy;
-	for (byte i = 0; i < strlen(s); i++)
+	uint8_t tmpx = dx, tmpy = dy;
+	for (uint8_t i = 0; i < strlen(s); i++)
 		printcat(s[i], w, h, tmpx + i * (FONTWIDTH + 1) * w, tmpy);
 }
 
 // Print sized string s at (x|y)
-static void printsat(char *s, byte w, byte h, byte x, byte y)
+static void printsat(char *s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
 	prints(s, w, h);
@@ -100,7 +100,7 @@ static void display(void)
 }
 
 // Calculate frameduration
-static void setframerate(byte rate)
+static void setframerate(uint8_t rate)
 { 
 	eachframemillis = 1000 / rate;
 }
@@ -142,7 +142,7 @@ static void idle(void)
 // Wait (idle) for next frame
 static bool nextframe(void)
 {
-	byte now = (byte)millis(), framedurationms = now - thisframestart;
+	uint8_t now = (uint8_t)millis(), framedurationms = now - thisframestart;
 	if (justrendered)
 	{
 		lastframedurationms = framedurationms;

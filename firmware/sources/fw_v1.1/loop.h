@@ -25,7 +25,7 @@ void loop()
 		dcontrast(brightness);
 		don();
 	}
-	byte pot = (millis() - timestamp) / 1000L; // Control power management
+	uint8_t pot = (millis() - timestamp) / 1000L; // Control power management
 	if (pot > POWEROFFTIME)
 		sleep(); // Sleep
 	else if (pot > DISPLAYOFFTIME)
@@ -92,7 +92,7 @@ void loop()
 		{ // Printscreen only
 			if (ismenu)
 			{ // Select and dispatch MENU
-				byte limit = numberofcommands / FKEYNR - 1;
+				uint8_t limit = numberofcommands / FKEYNR - 1;
 				if (key == KEY_5)
 				{ // Cursor up
 					if (select > 0)

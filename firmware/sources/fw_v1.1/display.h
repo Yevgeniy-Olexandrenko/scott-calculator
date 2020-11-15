@@ -6,13 +6,13 @@
 #define SCREENWIDTH     128   // Screen width in pixel
 
 // Display cursor coordinates
-static byte dx = 0, dy = 0;
+static uint8_t dx = 0, dy = 0;
 
 // Masks to address GDDRAM of display
-static byte renderram = 0xB0, drawram = 0x40;
+static uint8_t renderram = 0xB0, drawram = 0x40;
 
 // Initialization sequence
-static const byte inits[] PROGMEM =
+static const uint8_t inits[] PROGMEM =
 {
 	0xC8,		// Set scan direction (C0 scan from COM0 to COM[N-1] or C8 mirroring)
 	0xA1,		// Set segment remap (A0 regular or A1 flip)
@@ -38,7 +38,7 @@ static void dsendstart(void)
 }
 
 // Send byte
-static bool dsendbyte(byte b)
+static bool dsendbyte(uint8_t b)
 { 
 	return (TinyWireM.write(b));
 }
@@ -57,7 +57,7 @@ static void dsenddatastart(void)
 }
 
 // Send data byte
-static void dsenddatabyte(byte b)
+static void dsenddatabyte(uint8_t b)
 { 
 	if (!dsendbyte(b))
 	{
@@ -75,7 +75,7 @@ static void dsendcmdstart(void)
 }
 
 // Send command
-static void dsendcmd(byte cmd)
+static void dsendcmd(uint8_t cmd)
 { 
 	dsendcmdstart();
 	dsendbyte(cmd);
@@ -102,7 +102,7 @@ static void dinit(void)
 	dbegin();
 	dsendstart();
 	dsendbyte(DISPLAY_COMMAND);
-	for (byte i = 0; i < sizeof(inits); i++)
+	for (uint8_t i = 0; i < sizeof(inits); i++)
 		dsendbyte(pgm_read_byte(&inits[i]));
 	dsendstop();
 }
@@ -120,7 +120,7 @@ static void doff(void)
 }
 
 // Set contrast
-void dcontrast(byte contrast)
+void dcontrast(uint8_t contrast)
 { 
 	dsendcmdstart();
 	dsendbyte(0x81);
@@ -129,7 +129,7 @@ void dcontrast(byte contrast)
 }
 
 // Set cursor to position (x|y)
-static void dsetcursor(byte x, byte y)
+static void dsetcursor(uint8_t x, uint8_t y)
 { 
 	dsendcmdstart();
 	dsendbyte(renderram | (y & 0x07));
@@ -141,7 +141,7 @@ static void dsetcursor(byte x, byte y)
 }
 
 // Fill screen with byte/pattern b
-static void dfill(byte b)
+static void dfill(uint8_t b)
 {
 	dsetcursor(0, 0);
 	dsenddatastart();
