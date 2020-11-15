@@ -9,7 +9,7 @@
 #define MAXSTRBUF 12	  // Maximal length of string buffer sbuf[]
 #define STACK_SIZE 5		  // Size of floatstack
 #define TINYNUMBER 1e-7	  // Number for rounding to 0
-#define RAD 57.29578	  // 180/PI
+#define PI 3.14159265358979f
 #define MAXITERATE 100	  // Maximal number of Taylor series loops to iterate
 #define FKEYNR 3		  // 3 function keys
 #define KEY_DUMMY 0xff	  // Needed to enter key-loop and printstring
@@ -24,16 +24,18 @@
 #define BITSIN 2		  // Bit for sin()
 #define BITASIN 4		  // Bit for asin
 
-#define _abs(x) ((x < 0) ? (-x) : (x)) // abs()-substitute macro
-#define _ones(x) ((x) % 10)			   // Calculates ones unit
-#define _tens(x) (((x) / 10) % 10)	   // Calculates tens unit
-#define _huns(x) (((x) / 100) % 10)	   // Calculates hundreds unit
-#define _tsds(x) (((x) / 1000) % 10)   // Calculates thousands unit
+#define _abs(x)    ((x < 0) ? (-x) : (x)) // abs()-substitute macro
+#define _ones(x)   ((x) % 10)             // Calculates ones unit
+#define _tens(x)   (((x) / 10) % 10)      // Calculates tens unit
+#define _huns(x)   (((x) / 100) % 10)     // Calculates hundreds unit
+#define _tsds(x)   (((x) / 1000) % 10)    // Calculates thousands unit
+#define _to_rad(x) ((x) * (PI / 180))
+#define _to_deg(x) ((x) * (180 / PI))
 
 static uint8_t key;                                // Holds entered key
 static uint8_t oldkey;                             // Old key - use for debouncing
 static char    sbuf[MAXSTRBUF];                    // Holds string to print
-static float   stack[STACK_SIZE];                   // Float stack (XYZT) and memory
+static float   stack[STACK_SIZE];                  // Float stack (XYZT) and memory
 static bool    isnewnumber = true;                 // True if stack has to be lifted before entering a new number
 static bool    ispushed = false;                   // True if stack was already pushed by ENTER
 static uint8_t decimals = 0;                       // Number of decimals entered - used for input after decimal dot
@@ -267,6 +269,8 @@ static void ReadBattery(void)
 	stack[0] = 1125.3f / ((high << 8) | ADCL);
 }
 
+
+
 static void X_Is_X_Add_Y()
 {
 	stack[0] += stack[1];
@@ -290,6 +294,8 @@ static void X_Is_Y_Div_X()
 	stack[0] = stack[1] / stack[0];
 	StackPullUpper();
 }
+
+
 
 
 // Function pointer array subroutines
@@ -394,7 +400,7 @@ static void _acosh(void)
 }
 static void _asin(void)
 { // ASIN
-	stack[0] = _exp_sin_asin(stack[0], BITASIN) * RAD;
+	stack[0] = _to_deg(_exp_sin_asin(stack[0], BITASIN));
 }
 static void _asinh(void)
 { // ASINH
@@ -633,7 +639,7 @@ static void _shadowload2(void)
 
 static void _sin(void)
 { // SIN
-	stack[0] = _exp_sin_asin(stack[0] / RAD, BITSIN);
+	stack[0] = _exp_sin_asin(_to_rad(stack[0]), BITSIN);
 }
 static void _sinh(void)
 { // SINH
@@ -738,34 +744,38 @@ static void printfloat(float f, uint8_t mh, uint8_t y)
 		e = -e;
 	sbuf[8] = e >= 10 ? _tens(e) + '0' : '0';
 	sbuf[9] = _ones(e) + '0';
-	printcat(sbuf[0], SIZEM, mh, 0, y); // * Print sbuf in float format
-	printcat('.', SIZEM, mh, 23, y);
-	printcat(sbuf[1], SIZEM, mh, 12, y);
+	PrintCharAt(sbuf[0], SIZEM, mh, 0, y); // * Print sbuf in float format
+	PrintCharAt('.', SIZEM, mh, 23, y);
+	PrintCharAt(sbuf[1], SIZEM, mh, 12, y);
 
 	uint8_t nonzero = false; // Suppress trailing zeros
 	for (uint8_t i = 6; i > 1; i--)
 		if (sbuf[i] != '0' || nonzero)
 		{
 			nonzero = true;
-			printcat(sbuf[i], SIZEM, mh, 12 * i + 8, y);
+			PrintCharAt(sbuf[i], SIZEM, mh, 12 * i + 8, y);
 		}
 	for (uint8_t i = 7; i < 10; i++)
-		printcat(sbuf[i], SIZEM, SIZEM, 12 * i + 10, 0);
+		PrintCharAt(sbuf[i], SIZEM, SIZEM, 12 * i + 10, 0);
 }
 
 static void printscreen(void)
-{					 // Print screen due to state
-	uint8_t mh = SIZEM; // Mantissa height
+{
 	cls();
+
+	uint8_t mh = SIZEM; // Mantissa height
 	printbitshift = 1; // Shift second line one pixel down
+
 	if (isplaystring || isplay)
-		printsat("RUN", SIZEM, SIZEM, 0, 2); // Print running message
+	{
+		PrintStringAt("RUN", SIZEM, SIZEM, 0, 2); // Print running message
+	}
 	else if (ismenu)
 	{ // Print MENU above F-keys (789)
 		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
 			strcpy_P(sbuf, (char *)pgm_read_word(&(cmd[select * FKEYNR + i])));
-			printsat(sbuf, SIZEM, SIZEM, 47 * i, 2);
+			PrintStringAt(sbuf, SIZEM, SIZEM, 47 * i, 2);
 		}
 	}
 	else
@@ -777,10 +787,12 @@ static void printscreen(void)
 			sbuf[0] = CHARREC;
 		if (isf)
 			sbuf[1] = CHARSHIFT;
-		printsat(sbuf, SIZEM, SIZEM, 106, 2);
+		PrintStringAt(sbuf, SIZEM, SIZEM, 106, 2);
 	}
+
 	printbitshift = 0;
 	if (!isplaystring && !isplay)
 		printfloat(stack[0], mh, 0); // Print stack[0]
+
 	display();
 }

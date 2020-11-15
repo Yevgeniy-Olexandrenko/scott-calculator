@@ -39,14 +39,14 @@ static void delayshort(uint8_t ms)
 }
 
 // Print char c with width and height (1, 2 or 4)
-static void printc(uint8_t c, uint8_t w, uint8_t h)
+static void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 {
-	uint8_t tmpx = dx;
+	uint8_t tx = dx;
 	for (uint8_t k = 0; k < h; k++)
 	{ // One byte, two nibbles or 4 pairs of bits
 		if (k > 0)
 		{			   // Manage cursor position, if size >1
-			dx = tmpx; // Remember x position
+			dx = tx; // Remember x position
 			dy++;	   // Increment y position/page
 			dsetcursor(dx, dy);
 		}
@@ -66,25 +66,27 @@ static void printc(uint8_t c, uint8_t w, uint8_t h)
 }
 
 // Print sized char c at (x|y)
-static void printcat(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+static void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
-	printc(c, w, h);
+	PrintChar(c, w, h);
 }
 
 // Print string
-static void prints(char *s, uint8_t w, uint8_t h)
+static void PrintString(char *s, uint8_t w, uint8_t h)
 {
-	uint8_t tmpx = dx, tmpy = dy;
-	for (uint8_t i = 0; i < strlen(s); i++)
-		printcat(s[i], w, h, tmpx + i * (FONTWIDTH + 1) * w, tmpy);
+	uint8_t tx = dx, ty = dy;
+	for (uint8_t l = strlen(s), i = 0; i < l; i++)
+	{
+		PrintCharAt(s[i], w, h, tx + i * (FONTWIDTH + 1) * w, ty);
+	}
 }
 
 // Print sized string s at (x|y)
-static void printsat(char *s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+static void PrintStringAt(char *s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
-	prints(s, w, h);
+	PrintString(s, w, h);
 }
 
 // Clear screen
