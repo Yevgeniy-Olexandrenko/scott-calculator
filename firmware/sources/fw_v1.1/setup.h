@@ -17,5 +17,5 @@ void setup()
 	dcontrast(brightness = EEPROM[EECONTRAST]);
 
 	// START
-	loadstack(); // Read stack from EEPROM (saved with sleep/OFF)
+	LoadStack(); // Read stack from EEPROM (saved with sleep/OFF)
 }

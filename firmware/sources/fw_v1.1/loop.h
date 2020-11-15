@@ -38,7 +38,7 @@ void loop()
 		key = playbuf[select];
 		if (key == NULL)
 		{						  // Stop playstring
-			_shadowload(restore); // Restore upper part of stack
+			LoadStackFromShadowBuffer(restore); // Restore upper part of stack
 			isplaystring = false;
 			isnewnumber = true;
 			key = KEY_DUMMY;
