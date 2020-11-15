@@ -2,8 +2,7 @@
 
 void loop()
 {
-	if (!(nextframe()))
-		return; // Pause render (idle) until next frame
+	if (!(nextframe())) return;
 
 	if (isfirstrun)
 	{
@@ -13,25 +12,25 @@ void loop()
 	else
 	{
 		key = getkeycode();
-		if (key == oldkey)
-			key = NULL; // No key repeat
-		else
-			oldkey = key;
+		if (key == oldkey) key = NULL; else oldkey = key;
 	}
 
 	if (key)
-	{						  // ### Power management
-		timestamp = millis(); // Keep awake when active
+	{
+		timestamp = millis();
 		dcontrast(brightness);
 		don();
 	}
-	uint8_t pot = (millis() - timestamp) / 1000L; // Control power management
+
+	uint8_t pot = (millis() - timestamp) / 1000L;
 	if (pot > POWEROFFTIME)
-		sleep(); // Sleep
-	else if (pot > DISPLAYOFFTIME)
-		doff(); // Display off
+	{
+		PowerOff();
+	}
 	else if (pot > DIMTIME)
-		dcontrast(0x00); // Dim display
+	{
+		dcontrast(0x00);
+	}
 
 	if (isplaystring)
 	{ // ### Play string

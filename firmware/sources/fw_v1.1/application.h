@@ -4,7 +4,6 @@
 #define CHARSHIFT '='	  // Character for shift symbol
 #define CHARREC '@'		  // Character for recording symbol
 #define POWEROFFTIME 30	  // Time for auto poweroff in s
-#define DISPLAYOFFTIME 20 // Time for auto displayoff in s
 #define DIMTIME 10		  // Time for auto displaydim in s
 #define MAXSTRBUF 12	  // Maximal length of string buffer sbuf[]
 #define STACK_SIZE 5		  // Size of floatstack
@@ -216,7 +215,7 @@ static void StackPush()
 }
 
 // PULL
-void StackPull(void)
+void StackPull()
 {
 	// stack[1] -> stack[0]
 	// stack[2] -> stack[1]
@@ -226,13 +225,24 @@ void StackPull(void)
 }
 
 // PULLUPPER
-static void StackPullUpper(void)
+static void StackPullUpper()
 {
 	// stack[0] -> not changed
 	// stack[2] -> stack[1]
 	// stack[3] -> stack[2]
 	// stack[4] -> not changed
 	memcpy(&stack[1], &stack[2], (STACK_SIZE - 3) * sizeof(float));
+}
+
+static void Store()
+{
+	stack[STACK_SIZE - 1] = stack[0];
+}
+
+static void Recall()
+{
+	StackPush();
+	stack[0] = stack[STACK_SIZE - 1];
 }
 
 // Checks, if stack[0] is between 0 and 9
@@ -252,8 +262,7 @@ static void PlayString(uint8_t slot)
 	ispushed = isdot = false;
 }
 
- // BATT
-static void ReadBattery(void)
+static void ReadBattery()
 {
 	// Set voltage bits for ATTINY85
 	ADMUX = _BV(MUX3) | _BV(MUX2); 
@@ -269,6 +278,12 @@ static void ReadBattery(void)
 	stack[0] = 1125.3f / ((high << 8) | ADCL);
 }
 
+static void PowerOff()
+{
+	EEPROM[EECONTRAST] = brightness;
+	SaveStack();
+	sleep();
+}
 
 
 static void X_Is_X_Add_Y()
@@ -334,7 +349,6 @@ static float _pow(void);
 static float _pow10(int8_t e);
 static void _pv(void);
 static void _r2p(void);
-static void _rcl(void);
 static void _rec(void);
 static void _rotup(void);
 static void _rot(void);
@@ -344,10 +358,8 @@ static void _shadowload1(void);
 static void _shadowload2(void);
 static void _sin(void);
 static void _sinh(void);
-static void _sleep(void);
 static void _sqrt(void);
 static void _stat(void);
-static void _sto(void);
 static void _sum(void);
 static void _sum1(void);
 static void _sum2stack(void);
@@ -359,9 +371,9 @@ static void _tanh(void);
 static void (*dispatch[])(void) = {
 	&_numinput,							  // Normal calculator keys (dispatch 0)     OFFSET: 0
 	&_nop, &_ceclx, &_ee, &_enter, &_chs, // 1d:15 2c;13 3e<5 4x=16 5s>9 (no 6f?1)
-	&ReadBattery, &_rcl, &_sto, &X_Is_Y_Sub_X,		  // Shiftkeys 0 1 2 3  OFFSET: 6
+	&ReadBattery, &Recall, &Store, &X_Is_Y_Sub_X,		  // Shiftkeys 0 1 2 3  OFFSET: 6
 	&_const, &_cmdkey, &X_Is_X_Mul_Y, &_menu,	  //         4 5 6 7
-	&_sum, &X_Is_Y_Div_X, &_swap, &_sleep,		  //             8 9 d c
+	&_sum, &X_Is_Y_Div_X, &_swap, &PowerOff,		  //             8 9 d c
 	&_rotup, &X_Is_X_Add_Y, &_rot, &_nop,		  //              e x s f
 
 	&_sqrt, &_pow, &_inv,				  // MENU                          OFFSET: 21 //22
@@ -596,11 +608,7 @@ static void _r2p(void)
 { // R2P
 	PlayString(PSR2P);
 }
-static void _rcl(void)
-{ // RCL
-	StackPush();
-	stack[0] = stack[STACK_SIZE - 1];
-}
+
 static void _rec(void)
 { // REC
 	_recplay();
@@ -645,12 +653,7 @@ static void _sinh(void)
 { // SINH
 	PlayString(PSSINH);
 }
-static void _sleep(void)
-{									 // SLEEP
-	EEPROM[EECONTRAST] = brightness; // Save brightness to EEPROM
-	SaveStack();
-	sleep();
-}
+
 static void _sqrt(void)
 { // SQRT
 	if (stack[0] != 0.0)
@@ -665,10 +668,7 @@ static void _stat(void)
 	_sum2stack();
 	PlayString(PSSTAT);
 }
-static void _sto(void)
-{ // STO
-	stack[STACK_SIZE - 1] = stack[0];
-}
+
 
 static void _sum(void)
 { // SUM
@@ -679,7 +679,7 @@ static void _sum1(void)
 	for (uint8_t i = 0; i < STACK_SIZE; i++)
 		sum[i] += stack[i];
 	_sum2stack(); // Show n
-	_rcl();
+	Recall();
 }
 static void _sum2stack(void)
 { // Copies sum[] to stack[] (including mem)
