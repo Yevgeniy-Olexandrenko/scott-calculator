@@ -721,42 +721,49 @@ static float _exp_sin_asin(float f, uint8_t nr)
 }
 
 static void printfloat(float f, uint8_t mh, uint8_t y)
-{						 // Print float with mantissa height (mh) at line y
-	long m;				 // Mantissa
-	int8_t e;			 // Exponent
-	sbuf[0] = CHARSPACE; // * Create sign
-	if (f < 0.0)
+{
+	int32_t m;
+	int8_t  e;
+
+	sbuf[0] = CHARSPACE;
+	if (f < 0) { f = -f; sbuf[0] = '-'; }
+
+	e = log(f) / log(10);
+	m = (f / _pow10(e - 5)) + 0.5;
+	if (m > 0 && m < 1e5)
 	{
-		f = -f;
-		sbuf[0] = '-';
+		m = (f / _pow10(--e - 5)) + 0.5;
 	}
-	e = log(f) / log(10);				 // * Calculate exponent (without using log10())
-	m = (f / _pow10(e - 5)) + 0.5;		 // * Create mantissa
-	if (m > 0 && m < 1e5)				 // Change (n-1)-digit-mantissa to n digits
-		m = (f / _pow10(--e - 5)) + 0.5; // "New" mantissa
+
 	for (uint8_t i = 6; i > 0; i--)
-	{ // Print mantissa
+	{
 		sbuf[i] = _ones(m) + '0';
 		m /= 10;
 	}
-	sbuf[7] = e < 0 ? '-' : CHARSPACE; // * Create exponent
-	if (e < 0)
-		e = -e;
-	sbuf[8] = e >= 10 ? _tens(e) + '0' : '0';
+
+	sbuf[7] = CHARSPACE;
+	if (e < 0) { e = -e; sbuf[7] = '-';	}
+	sbuf[8] = _tens(e) + '0';
 	sbuf[9] = _ones(e) + '0';
-	PrintCharAt(sbuf[0], SIZEM, mh, 0, y); // * Print sbuf in float format
+	
+	PrintCharAt(sbuf[0], SIZEM, mh, 0, y);
 	PrintCharAt('.', SIZEM, mh, 23, y);
 	PrintCharAt(sbuf[1], SIZEM, mh, 12, y);
 
-	uint8_t nonzero = false; // Suppress trailing zeros
+	uint8_t nonzero = false;
 	for (uint8_t i = 6; i > 1; i--)
+	{
 		if (sbuf[i] != '0' || nonzero)
 		{
 			nonzero = true;
 			PrintCharAt(sbuf[i], SIZEM, mh, 12 * i + 8, y);
 		}
+	}
+
 	for (uint8_t i = 7; i < 10; i++)
+	{
 		PrintCharAt(sbuf[i], SIZEM, SIZEM, 12 * i + 10, 0);
+	}
 }
 
 static void printscreen(void)
@@ -780,7 +787,7 @@ static void printscreen(void)
 	}
 	else
 	{
-		mh = SIZEL;
+		
 		sbuf[2] = NULL; // Print record and/or shift sign
 		sbuf[0] = sbuf[1] = CHARSPACE;
 		if (isrec)
@@ -788,6 +795,7 @@ static void printscreen(void)
 		if (isf)
 			sbuf[1] = CHARSHIFT;
 		PrintStringAt(sbuf, SIZEM, SIZEM, 106, 2);
+		mh = SIZEL;
 	}
 
 	printbitshift = 0;
