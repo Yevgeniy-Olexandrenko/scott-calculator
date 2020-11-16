@@ -1,7 +1,7 @@
 // FONT
 
-#define FONTOFFSET ','
-#define FONTWIDTH  5
+#define FONT_OFFSET ','
+#define FONT_WIDTH  5
 
 // Edged font
 const uint8_t font[] PROGMEM =

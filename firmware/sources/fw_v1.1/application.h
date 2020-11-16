@@ -745,44 +745,45 @@ static void printfloat(float f, uint8_t mh, uint8_t y)
 	if (e < 0) { e = -e; sbuf[7] = '-';	}
 	sbuf[8] = _tens(e) + '0';
 	sbuf[9] = _ones(e) + '0';
-	
-	PrintCharAt(sbuf[0], SIZEM, mh, 0, y);
-	PrintCharAt('.', SIZEM, mh, 23, y);
-	PrintCharAt(sbuf[1], SIZEM, mh, 12, y);
+
+	PrintCharAt(sbuf[0], CHAR_SIZE_M, mh, 0, y);
+	PrintCharAt(sbuf[1], CHAR_SIZE_M, mh, 11, y);
+	PrintCharAt('.', CHAR_SIZE_M, mh, 22, y);
 
 	uint8_t nonzero = false;
-	for (uint8_t i = 6; i > 1; i--)
+	for (uint8_t i = 6; i >= 2; --i)
 	{
 		if (sbuf[i] != '0' || nonzero)
 		{
 			nonzero = true;
-			PrintCharAt(sbuf[i], SIZEM, mh, 12 * i + 8, y);
+			PrintCharAt(sbuf[i], CHAR_SIZE_M, mh, 11 * i + 11, y);
 		}
 	}
 
-	for (uint8_t i = 7; i < 10; i++)
+	for (uint8_t i = 7; i <= 9; i++)
 	{
-		PrintCharAt(sbuf[i], SIZEM, SIZEM, 12 * i + 10, 0);
+		PrintCharAt(sbuf[i], CHAR_SIZE_M, CHAR_SIZE_M, 11 * i + 19, 0);
 	}
+
 }
 
 static void printscreen(void)
 {
 	cls();
 
-	uint8_t mh = SIZEM; // Mantissa height
+	uint8_t mh = CHAR_SIZE_M; // Mantissa height
 	printbitshift = 1; // Shift second line one pixel down
 
 	if (isplaystring || isplay)
 	{
-		PrintStringAt("RUN", SIZEM, SIZEM, 0, 2); // Print running message
+		PrintStringAt("RUN", CHAR_SIZE_M, CHAR_SIZE_M, 0, 2); // Print running message
 	}
 	else if (ismenu)
 	{ // Print MENU above F-keys (789)
 		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
 			strcpy_P(sbuf, (char *)pgm_read_word(&(cmd[select * FKEYNR + i])));
-			PrintStringAt(sbuf, SIZEM, SIZEM, 47 * i, 2);
+			PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 47 * i, 2);
 		}
 	}
 	else
@@ -794,8 +795,8 @@ static void printscreen(void)
 			sbuf[0] = CHARREC;
 		if (isf)
 			sbuf[1] = CHARSHIFT;
-		PrintStringAt(sbuf, SIZEM, SIZEM, 106, 2);
-		mh = SIZEL;
+		PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 106, 2);
+		mh = CHAR_SIZE_L;
 	}
 
 	printbitshift = 0;

@@ -1,9 +1,9 @@
 // SYSTEM
 
 #define FRAMERATE 10 // Maximal number of screen refreshes per second (>3)
-#define SIZES 0x01   // Printing size
-#define SIZEM 0x02   // Printing size
-#define SIZEL 0x04   // Printing size
+#define CHAR_SIZE_S 0x01   // Printing size
+#define CHAR_SIZE_M 0x02   // Printing size
+#define CHAR_SIZE_L 0x04   // Printing size
 
 // Framing times
 static uint8_t eachframemillis, thisframestart, lastframedurationms;
@@ -43,23 +43,19 @@ static void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 {
 	uint8_t tx = dx;
 	for (uint8_t k = 0; k < h; k++)
-	{ // One byte, two nibbles or 4 pairs of bits
-		if (k > 0)
-		{			   // Manage cursor position, if size >1
-			dx = tx; // Remember x position
-			dy++;	   // Increment y position/page
-			dsetcursor(dx, dy);
-		}
-		for (uint8_t j = 0; j < FONTWIDTH; j++)
-		{																						// Fontbyte - shifted one pixel down (if applicable)
-			uint8_t tmp = pgm_read_byte(&font[FONTWIDTH * (c - FONTOFFSET) + j]) << printbitshift; // Fontbyte
-			if (h == SIZEM)
-				tmp = expand4bit((tmp >> (k * 4)) & 0x0f); // Expand 0000abcd
-			else if (h == SIZEL)
-				tmp = expand2bit((tmp >> (k * 2)) & 0x03); // Expand 000000ab
+	{
+		if (k > 0) dsetcursor(dx = tx, ++dy);
+
+		for (uint8_t j = 0; j < FONT_WIDTH; j++)
+		{
+			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + j]) << printbitshift;
+			if (h == CHAR_SIZE_M)
+				bitmap = expand4bit((bitmap >> (k * 4)) & 0x0f); // Expand 0000abcd
+			else if (h == CHAR_SIZE_L)
+				bitmap = expand2bit((bitmap >> (k * 2)) & 0x03); // Expand 000000ab
+
 			dsenddatastart();
-			for (uint8_t i = 0; i < w; i++)
-				dsenddatabyte(tmp);
+			for (uint8_t i = 0; i < w; i++) dsenddatabyte(bitmap);
 			dsendstop();
 		}
 	}
@@ -78,7 +74,7 @@ static void PrintString(char *s, uint8_t w, uint8_t h)
 	uint8_t tx = dx, ty = dy;
 	for (uint8_t l = strlen(s), i = 0; i < l; i++)
 	{
-		PrintCharAt(s[i], w, h, tx + i * (FONTWIDTH + 1) * w, ty);
+		PrintCharAt(s[i], w, h, tx + i * (FONT_WIDTH + 1) * w, ty);
 	}
 }
 
