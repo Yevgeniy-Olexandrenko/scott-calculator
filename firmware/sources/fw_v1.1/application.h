@@ -3,6 +3,7 @@
 #define CHARSPACE ':'	  // Character for space symbol
 #define CHARSHIFT '='	  // Character for shift symbol
 #define CHARREC '@'		  // Character for recording symbol
+
 #define POWEROFFTIME 30	  // Time for auto poweroff in s
 #define DIMTIME 10		  // Time for auto displaydim in s
 #define MAXSTRBUF 12	  // Maximal length of string buffer sbuf[]
@@ -12,6 +13,7 @@
 #define MAXITERATE 100	  // Maximal number of Taylor series loops to iterate
 #define FKEYNR 3		  // 3 function keys
 #define KEY_DUMMY 0xff	  // Needed to enter key-loop and printstring
+
 #define EECONTRAST 0	  // EEPROM address of brightness (1 byte)
 #define EESTACK 1		  // EEPROM address of stack ((4+1)*4 bytes)
 #define EECMDKEY 21		  // EEPROM address of command keys (10 bytes)
@@ -19,6 +21,7 @@
 #define EEREC 71		  // EEPROM address Starting EE-address for saving "type recorder"
 #define MAXREC 146		  // Number of record steps per slot
 #define MAXRECSLOT 3	  // Maximal slots to record
+
 #define BITEXP 1		  // Bit for exp()
 #define BITSIN 2		  // Bit for sin()
 #define BITASIN 4		  // Bit for asin
@@ -39,17 +42,17 @@ static char    sbuf[MAXSTRBUF];                    // Holds string to print
 static float   stack[STACK_SIZE];                  // Float stack (XYZT) and memory
 static uint8_t    isnewnumber = true;                 // True if stack has to be lifted before entering a new number
 static uint8_t    ispushed = false;                   // True if stack was already pushed by ENTER
-static uint8_t    isshowstack = false;
+static uint8_t    isShowStack = false;
 static uint8_t decimals = 0;                       // Number of decimals entered - used for input after decimal dot
 static uint8_t    isdot = false;                      // True if dot was pressed and decimals will be entered
-static uint8_t    isf = false;                        // true if f is pressed
-static uint8_t    ismenu = false;                     // True if menu demanded
+static uint8_t    isShift = false;                        // true if f is pressed
+static uint8_t    isMenu = false;                     // True if menu demanded
 static uint8_t select = 0;                         // Selection number or playstring position
 static uint8_t    isplaystring = false;               // True if string should be played
 static uint8_t brightness;                         // Contrast
 static uint8_t    isfirstrun = true;                  // Allows first run of loop and printscreen without key query
 static long    timestamp = 0;                      // Needed for timing of power manangement
-static int     recptr = 0;                         // Pointer to recording step
+static uint16_t     recptr = 0;                         // Pointer to recording step
 static uint8_t recslot = 0;                        // Slot number for recording to EEPROM
 static uint8_t    isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
 static float   sum[STACK_SIZE] = { 0.f };	       // Memory to save statistic sums
@@ -491,7 +494,7 @@ void _cosh()
 
 void _dot()
 { // DOT .
-	if (!isf)
+	if (!isShift)
 	{
 		_newnumber();
 		isdot = true;
@@ -530,7 +533,7 @@ void _lr()
 }
 void _menu()
 { // MENU
-	ismenu = true;
+	isMenu = true;
 	select = 0;
 }
 
@@ -558,11 +561,11 @@ void _numinput()
 { // NUM Numeric input (0...9)
 	_newnumber();
 	if (isdot)
-		stack[0] += (key - KEY_14) / _pow10(++decimals); // Append decimal to number
+		stack[0] += (key - KEY_B3_0) / _pow10(++decimals); // Append decimal to number
 	else
 	{ // Append digit to number
 		stack[0] *= 10;
-		stack[0] += key - KEY_14;
+		stack[0] += key - KEY_B3_0;
 	}
 }
 void _p2r()
@@ -571,7 +574,7 @@ void _p2r()
 }
 void _recplay()
 { // Prepare variables for REC or PLAY
-	recslot = key - KEY_2;
+	recslot = key - KEY_B0_7;
 	recptr = EEREC + recslot * MAXREC;
 }
 void _play()
@@ -628,7 +631,7 @@ void _rot()
 	float tmp = stack[0];
 	StackPull();
 	stack[STACK_SIZE - 2] = tmp;
-	isshowstack = true;
+	isShowStack = true;
 }
 void _setcmdkey()
 { // SETCMDKEY
@@ -695,7 +698,7 @@ void _swap()
 	float tmp = stack[0];
 	stack[0] = stack[1];
 	stack[1] = tmp;
-	isshowstack = true;
+	isShowStack = true;
 }
 void _tan()
 { // TAN
@@ -785,7 +788,7 @@ void PrintScreen()
 	{
 		PrintStringAt("RUN", CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
 	}
-	else if (ismenu)
+	else if (isMenu)
 	{
 		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
@@ -799,7 +802,7 @@ void PrintScreen()
 		sbuf[2] = NULL;
 		sbuf[0] = sbuf[1] = CHARSPACE;
 		if (isrec) sbuf[0] = CHARREC;
-		if (isf) sbuf[1] = CHARSHIFT;
+		if (isShift) sbuf[1] = CHARSHIFT;
 		PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 106, 2);
 		h = CHAR_SIZE_L;
 	}
@@ -807,7 +810,7 @@ void PrintScreen()
 	printbitshift = 0;
 	if (!isplaystring && !isplay)
 	{
-		if (isshowstack)
+		if (isShowStack)
 		{
 			for (i = 0; i <= STACK_SIZE - 2; ++i)
 				PrintFloat(stack[STACK_SIZE - 2 - i], CHAR_SIZE_S, i);

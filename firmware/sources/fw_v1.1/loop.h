@@ -22,12 +22,12 @@ void loop()
 		don();
 	}
 
-	uint8_t pot = (millis() - timestamp) / 1000L;
-	if (pot > POWEROFFTIME)
+	uint8_t elapsedTime = (millis() - timestamp) / 1000L;
+	if (elapsedTime > POWEROFFTIME)
 	{
 		PowerOff();
 	}
-	else if (pot > DIMTIME)
+	else if (elapsedTime > DIMTIME)
 	{
 		dcontrast(0x00);
 	}
@@ -44,7 +44,7 @@ void loop()
 		}
 		else
 		{ // Go on for dispatching
-			if (key <= KEY_15 && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_15)))
+			if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
 			{ // New number (0-9,.)
 				isnewnumber = true;
 				ispushed = false;
@@ -55,7 +55,7 @@ void loop()
 
 	else if (isrec || isplay)
 	{ // ### Type recorder (else: playstring works inside play)
-		int maxptr = EEREC + (recslot + 1) * MAXREC;
+		uint16_t maxptr = EEREC + (recslot + 1) * MAXREC;
 		if (isrec)
 		{ // Record keys and write to EEPPROM
 			if (key && recptr < maxptr)
@@ -63,75 +63,72 @@ void loop()
 		}
 		else
 		{ // Read/play key from EEPROM
-			if (key == KEY_13)
+			if (key == KEY_A3_C)
 			{ // Stop execution
 				isplay = false;
 				key = KEY_DUMMY;
 			}
 			key = EEPROM[recptr++];
 		}
-		if (key == KEY_13 || recptr >= maxptr)
+		if (key == KEY_A3_C || recptr >= maxptr)
 		{
 			isplay = isrec = false;
 			key = KEY_DUMMY;
 		}
 	}
 
-	if (key == KEY_1)
-	{							  // ### SHIFT pressed
-		isf = isf ? false : true; // Toggle shift key
+	if (key == KEY_A0_F)
+	{
+		isShift = !isShift;
 		key = KEY_DUMMY;
 	}
-	else if (key == KEY_15)
+	else if (key == KEY_C3_D)
 	{
-		_dot(); // ### Entering decimals demanded
+		_dot();
 	}
 
 	if (key)
-	{ // ### Execute key
-		isshowstack = false;
+	{
+		isShowStack = false;
 		if (key != KEY_DUMMY)
-		{ // Printscreen only
-			if (ismenu)
-			{ // Select and dispatch MENU
+		{
+
+			if (isMenu)
+			{
 				uint8_t limit = numberofcommands / FKEYNR - 1;
-				if (key == KEY_5)
-				{ // Cursor up
-					if (select > 0)
-						select--;
-					else
-						select = limit;
+				if (key == KEY_A1_E)
+				{
+					if (select > 0) select--; else select = limit;
 				}
-				else if (key == KEY_9)
-				{ // Cursor down
-					if (select < limit)
-						select++;
-					else
-						select = 0;
+				else if (key == KEY_A2_S)
+				{
+					if (select < limit) select++; else select = 0;
 				}
-				else if (key == KEY_13)
-				{ // ESC
-					ismenu = false;
+				else if (key == KEY_A3_C)
+				{
+					isMenu = false;
 				}
-				else if (key >= KEY_2 && key <= KEY_4)
-				{													   // F-KEY "7 8 9"
-					(*dispatch[22 + select * FKEYNR + key - KEY_2])(); // Dispatch with menu offset
+				else if (key >= KEY_B2_1 && key <= KEY_D2_3)
+				{
+					(*dispatch[22 + select * FKEYNR + key - KEY_B2_1])();
 					isnewnumber = true;
-					ismenu = false;
+					isMenu = false;
 				}
 			}
-			else if (isf)
-			{ // Dispatch shifted key
-				(*dispatch[key - KEY_14 + 6])();
-				isf = ispushed = false;
+
+			else if (isShift)
+			{
+				(*dispatch[key - KEY_B3_0 + 6])();
+				isShift = ispushed = false;
 				isnewnumber = true;
 			}
+
 			else
-			{ // Dispatch anything else
-				if (key <= KEY_4)
+			{
+				if (key <= KEY_D0_9)
 					(*dispatch[0])(); // Dispatch number 0(0...9)
 				else
-					(*dispatch[key - KEY_4])(); // Dispatch key (1d: 2c; 3e< 4x= 5s> 6f? + other) due to function table
+					(*dispatch[key - KEY_D0_9])(); // Dispatch key (1d: 2c; 3e< 4x= 5s> 6f? + other) due to function table
 			}
 		}
 		PrintScreen(); // Print screen every keypress (or if key == KEY_DUMMY)
