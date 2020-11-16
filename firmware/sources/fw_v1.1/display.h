@@ -26,38 +26,38 @@ static const uint8_t inits[] PROGMEM =
 };
 
 // Initialize communication
-static void dbegin(void)
+void dbegin()
 {
 	TinyWireM.begin();
 }
 
 // Start communication
-static void dsendstart(void)
+void dsendstart()
 { 
 	TinyWireM.beginTransmission(DISPLAY_ADDRESS);
 }
 
 // Send byte
-static bool dsendbyte(uint8_t b)
+static uint8_t dsendbyte(uint8_t b)
 { 
 	return (TinyWireM.write(b));
 }
 
 // Stop communication
-static void dsendstop(void)
+void dsendstop()
 { 
 	TinyWireM.endTransmission();
 }
 
 // Start data transfer
-static void dsenddatastart(void)
+void dsenddatastart()
 { 
 	dsendstart();
 	dsendbyte(DISPLAY_DATA);
 }
 
 // Send data byte
-static void dsenddatabyte(uint8_t b)
+void dsenddatabyte(uint8_t b)
 { 
 	if (!dsendbyte(b))
 	{
@@ -68,14 +68,14 @@ static void dsenddatabyte(uint8_t b)
 }
 
 // Start command transfer
-static void dsendcmdstart(void)
+void dsendcmdstart()
 { 
 	dsendstart();
 	dsendbyte(DISPLAY_COMMAND);
 }
 
 // Send command
-static void dsendcmd(uint8_t cmd)
+void dsendcmd(uint8_t cmd)
 { 
 	dsendcmdstart();
 	dsendbyte(cmd);
@@ -83,13 +83,13 @@ static void dsendcmd(uint8_t cmd)
 }
 
 // Render current half of GDDRAM to oled display
-static void drender(void)
+void drender()
 {
 	renderram ^= 0x04;
 }
 
 // Swap GDDRAM to other half and render
-static void dswap(void)
+void dswap()
 {
 	drawram ^= 0x20;
 	dsendcmd(drawram);
@@ -97,7 +97,7 @@ static void dswap(void)
 }
 
 // Run initialization sequence
-static void dinit(void)
+void dinit()
 {
 	dbegin();
 	dsendstart();
@@ -108,13 +108,13 @@ static void dinit(void)
 }
 
 // Display on
-static void don(void)
+void don()
 {
 	dsendcmd(0xAF);
 }
 
 // Display off
-static void doff(void)
+void doff()
 { 
 	dsendcmd(0xAE);
 }
@@ -129,7 +129,7 @@ void dcontrast(uint8_t contrast)
 }
 
 // Set cursor to position (x|y)
-static void dsetcursor(uint8_t x, uint8_t y)
+void dsetcursor(uint8_t x, uint8_t y)
 { 
 	dsendcmdstart();
 	dsendbyte(renderram | (y & 0x07));
@@ -141,7 +141,7 @@ static void dsetcursor(uint8_t x, uint8_t y)
 }
 
 // Fill screen with byte/pattern b
-static void dfill(uint8_t b)
+void dfill(uint8_t b)
 {
 	dsetcursor(0, 0);
 	dsenddatastart();

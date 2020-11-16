@@ -24,13 +24,13 @@
 static float _exp_sin_asin(float f, uint8_t nr);
 
 // Returns analog value measured on keyboard pin
-static int getbutton(void)
+static int getbutton()
 {
 	return (analogRead(KPIN));
 }
 
 // Returns key character due to analog value
-static uint8_t getkeycode(void)
+static uint8_t getkeycode()
 {
 	int b = getbutton();
 #if 0  

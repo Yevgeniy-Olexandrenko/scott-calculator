@@ -23,6 +23,8 @@
 #define BITSIN 2		  // Bit for sin()
 #define BITASIN 4		  // Bit for asin
 
+#define _min(a,b) ((a) < (b) ? (a) : (b))
+#define _max(a,b) ((a) > (b) ? (a) : (b))
 #define _abs(x)    ((x < 0) ? (-x) : (x)) // abs()-substitute macro
 #define _ones(x)   ((x) % 10)             // Calculates ones unit
 #define _tens(x)   (((x) / 10) % 10)      // Calculates tens unit
@@ -35,20 +37,21 @@ static uint8_t key;                                // Holds entered key
 static uint8_t oldkey;                             // Old key - use for debouncing
 static char    sbuf[MAXSTRBUF];                    // Holds string to print
 static float   stack[STACK_SIZE];                  // Float stack (XYZT) and memory
-static bool    isnewnumber = true;                 // True if stack has to be lifted before entering a new number
-static bool    ispushed = false;                   // True if stack was already pushed by ENTER
+static uint8_t    isnewnumber = true;                 // True if stack has to be lifted before entering a new number
+static uint8_t    ispushed = false;                   // True if stack was already pushed by ENTER
+static uint8_t    isshowstack = false;
 static uint8_t decimals = 0;                       // Number of decimals entered - used for input after decimal dot
-static bool    isdot = false;                      // True if dot was pressed and decimals will be entered
-static bool    isf = false;                        // true if f is pressed
-static bool    ismenu = false;                     // True if menu demanded
+static uint8_t    isdot = false;                      // True if dot was pressed and decimals will be entered
+static uint8_t    isf = false;                        // true if f is pressed
+static uint8_t    ismenu = false;                     // True if menu demanded
 static uint8_t select = 0;                         // Selection number or playstring position
-static bool    isplaystring = false;               // True if string should be played
+static uint8_t    isplaystring = false;               // True if string should be played
 static uint8_t brightness;                         // Contrast
-static bool    isfirstrun = true;                  // Allows first run of loop and printscreen without key query
+static uint8_t    isfirstrun = true;                  // Allows first run of loop and printscreen without key query
 static long    timestamp = 0;                      // Needed for timing of power manangement
 static int     recptr = 0;                         // Pointer to recording step
 static uint8_t recslot = 0;                        // Slot number for recording to EEPROM
-static bool    isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
+static uint8_t    isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
 static float   sum[STACK_SIZE] = { 0.f };	       // Memory to save statistic sums
 static float   shadow[STACK_SIZE] = { 0.f };        // Shadow memory (buffer) for stack
 static uint8_t restore;                            // Position of stack salvation (including mem)
@@ -177,7 +180,7 @@ char playbuf[40]; // Holds sii[]
 
 
 // Save whole stack to EEPROM
-static void SaveStack()
+void SaveStack()
 { 
 	uint8_t *p = (uint8_t *)stack;
 	for (uint8_t i = 0; i < STACK_SIZE * sizeof(float); i++)
@@ -185,7 +188,7 @@ static void SaveStack()
 }
 
 // Load whole stack from EEMPROM
-static void LoadStack()
+void LoadStack()
 { 
 	uint8_t *p = (uint8_t *)stack;
 	for (uint8_t i = 0; i < STACK_SIZE * sizeof(float); i++)
@@ -193,19 +196,19 @@ static void LoadStack()
 }
 
 // Save stack to shadow buffer (including mem)
-static void SaveStackToShadowBuffer()
+void SaveStackToShadowBuffer()
 { 
 	memcpy(shadow, stack, STACK_SIZE * sizeof(float));
 }
 
 // Load higher stack from shadow buffer
-static void LoadStackFromShadowBuffer(uint8_t pos)
+void LoadStackFromShadowBuffer(uint8_t pos)
 { 
 	memcpy(&stack[pos], &shadow[pos], (STACK_SIZE - pos) * sizeof(float));
 }
 
  // PUSH
-static void StackPush()
+void StackPush()
 {
 	// stack[4] -> not changed
 	// stack[2] -> stack[3]
@@ -225,7 +228,7 @@ void StackPull()
 }
 
 // PULLUPPER
-static void StackPullUpper()
+void StackPullUpper()
 {
 	// stack[0] -> not changed
 	// stack[2] -> stack[1]
@@ -234,25 +237,25 @@ static void StackPullUpper()
 	memcpy(&stack[1], &stack[2], (STACK_SIZE - 3) * sizeof(float));
 }
 
-static void Store()
+void Store()
 {
 	stack[STACK_SIZE - 1] = stack[0];
 }
 
-static void Recall()
+void Recall()
 {
 	StackPush();
 	stack[0] = stack[STACK_SIZE - 1];
 }
 
 // Checks, if stack[0] is between 0 and 9
-static bool IsStackXFrom0to9()
+static uint8_t IsStackXFrom0to9()
 { 
 	return (stack[0] >= 0 && stack[0] <= 9);
 }
 
 // PLAYSTRING
-static void PlayString(uint8_t slot)
+void PlayString(uint8_t slot)
 {
 	restore = slot >= RESTORE2 ? 2 : 1;
 	SaveStackToShadowBuffer();
@@ -262,7 +265,7 @@ static void PlayString(uint8_t slot)
 	ispushed = isdot = false;
 }
 
-static void ReadBattery()
+void ReadBattery()
 {
 	// Set voltage bits for ATTINY85
 	ADMUX = _BV(MUX3) | _BV(MUX2); 
@@ -278,7 +281,7 @@ static void ReadBattery()
 	stack[0] = 1125.3f / ((high << 8) | ADCL);
 }
 
-static void PowerOff()
+void PowerOff()
 {
 	EEPROM[EECONTRAST] = brightness;
 	SaveStack();
@@ -286,25 +289,25 @@ static void PowerOff()
 }
 
 
-static void X_Is_X_Add_Y()
+void X_Is_X_Add_Y()
 {
 	stack[0] += stack[1];
 	StackPullUpper();
 }
 
-static void X_Is_Y_Sub_X()
+void X_Is_Y_Sub_X()
 {
 	stack[0] = stack[1] - stack[0];
 	StackPullUpper();
 }
 
-static void X_Is_X_Mul_Y()
+void X_Is_X_Mul_Y()
 {
 	stack[0] *= stack[1];
 	StackPullUpper();
 }
 
-static void X_Is_Y_Div_X()
+void X_Is_Y_Div_X()
 {
 	stack[0] = stack[1] / stack[0];
 	StackPullUpper();
@@ -314,61 +317,61 @@ static void X_Is_Y_Div_X()
 
 
 // Function pointer array subroutines
-static void _acos(void);
-static void _acosh(void);
-static void _asin(void);
-static void _asinh(void);
-static void _atan(void);
-static void _atanh(void);
-static void _ce(void);
-static void _ceclx(void);
-static void _chs(void);
-static void _clx(void);
-static void _cmdkey(void);
-static void _const(void);
-static void _contrast(void);
-static void _cos(void);
-static void _cosh(void);
-static void _dot(void);
-static void _ee(void);
-static void _enter(void);
-static void _exp(void);
-static void _gamma(void);
-static void _inv(void);
-static void _ln(void);
-static void _lr(void);
-static void _menu(void);
-static void _nd(void);
-static void _newnumber(void);
-static void _nop(void);
-static void _numinput(void);
-static void _p2r(void);
-static void _recplay(void);
-static void _play(void);
-static float _pow(void);
+void _acos();
+void _acosh();
+void _asin();
+void _asinh();
+void _atan();
+void _atanh();
+void _ce();
+void _ceclx();
+void _chs();
+void _clx();
+void _cmdkey();
+void _const();
+void _contrast();
+void _cos();
+void _cosh();
+void _dot();
+void _ee();
+void _enter();
+void _exp();
+void _gamma();
+void _inv();
+void _ln();
+void _lr();
+void _menu();
+void _nd();
+void _newnumber();
+void _nop();
+void _numinput();
+void _p2r();
+void _recplay();
+void _play();
+static float _pow();
 static float _pow10(int8_t e);
-static void _pv(void);
-static void _r2p(void);
-static void _rec(void);
-static void _rotup(void);
-static void _rot(void);
-static void _setcmdkey(void);
-static void _setconst(void);
-static void _shadowload1(void);
-static void _shadowload2(void);
-static void _sin(void);
-static void _sinh(void);
-static void _sqrt(void);
-static void _stat(void);
-static void _sum(void);
-static void _sum1(void);
-static void _sum2stack(void);
-static void _swap(void);
-static void _tan(void);
-static void _tanh(void);
+void _pv();
+void _r2p();
+void _rec();
+void _rotup();
+void _rot();
+void _setcmdkey();
+void _setconst();
+void _shadowload1();
+void _shadowload2();
+void _sin();
+void _sinh();
+void _sqrt();
+void _stat();
+void _sum();
+void _sum1();
+void _sum2stack();
+void _swap();
+void _tan();
+void _tanh();
 
 // Function pointer array/table
-static void (*dispatch[])(void) = {
+void (*dispatch[])() = {
 	&_numinput,							  // Normal calculator keys (dispatch 0)     OFFSET: 0
 	&_nop, &_ceclx, &_ee, &_enter, &_chs, // 1d:15 2c;13 3e<5 4x=16 5s>9 (no 6f?1)
 	&ReadBattery, &Recall, &Store, &X_Is_Y_Sub_X,		  // Shiftkeys 0 1 2 3  OFFSET: 6
@@ -402,32 +405,32 @@ static void (*dispatch[])(void) = {
 
 // Function pointer array subroutines
 
-static void _acos(void)
+void _acos()
 { // ACOS
 	PlayString(PSACOS);
 }
-static void _acosh(void)
+void _acosh()
 { // ACOSH
 	PlayString(PSACOSH);
 }
-static void _asin(void)
+void _asin()
 { // ASIN
 	stack[0] = _to_deg(_exp_sin_asin(stack[0], BITASIN));
 }
-static void _asinh(void)
+void _asinh()
 { // ASINH
 	PlayString(PSASINH);
 }
-static void _atan(void)
+void _atan()
 { // ATAN
 	PlayString(PSATAN);
 }
-static void _atanh(void)
+void _atanh()
 { // ATANH
 	PlayString(PSATANH);
 }
 
-static void _ce(void)
+void _ce()
 { // CE
 	if (isdot)
 	{
@@ -442,23 +445,23 @@ static void _ce(void)
 	else
 		stack[0] = (long)(stack[0] / 10);
 }
-static void _ceclx(void)
+void _ceclx()
 { // CE/CLX
 	if (isnewnumber)
 		_clx();
 	else
 		_ce();
 }
-static void _chs(void)
+void _chs()
 { // CHS
 	stack[0] = -stack[0];
 	isnewnumber = true;
 }
-static void _clx(void)
+void _clx()
 { // CLX
 	stack[0] = 0.0;
 }
-static void _cmdkey(void)
+void _cmdkey()
 { // CMDKEY
 	if (IsStackXFrom0to9)
 	{
@@ -467,26 +470,26 @@ static void _cmdkey(void)
 		(*dispatch[EEPROM.read(EECMDKEY + tmp)])();
 	}
 }
-static void _const(void)
+void _const()
 { // CONST
 	if (IsStackXFrom0to9)
 		EEPROM.get(EECONST + (uint8_t)stack[0], stack[0]);
 }
-static void _contrast(void)
+void _contrast()
 { // CONTRAST
 	brightness = stack[0];
 	dcontrast(brightness);
 }
-static void _cos(void)
+void _cos()
 { // COS
 	PlayString(PSCOS);
 }
-static void _cosh(void)
+void _cosh()
 { // COSH
 	PlayString(PSCOSH);
 }
 
-static void _dot(void)
+void _dot()
 { // DOT .
 	if (!isf)
 	{
@@ -494,48 +497,48 @@ static void _dot(void)
 		isdot = true;
 	}
 }
-static void _ee(void)
+void _ee()
 { // EE
 	stack[0] = _pow10(stack[0]);
 	X_Is_X_Mul_Y();
 	isnewnumber = true;
 }
-static void _enter(void)
+void _enter()
 { // ENTER
 	StackPush();
 	ispushed = isnewnumber = true;
 }
-static void _exp(void)
+void _exp()
 { // EXP
 	stack[0] = _exp_sin_asin(stack[0], BITEXP);
 }
-static void _gamma(void)
+void _gamma()
 { // GAMMA
 	PlayString(PSGAMMA);
 }
-static void _inv(void)
+void _inv()
 { // INV
 	stack[0] = 1 / stack[0];
 }
-static void _ln(void)
+void _ln()
 { // LN
 	stack[0] = log(stack[0]);
 }
-static void _lr(void)
+void _lr()
 { // L.R.
 	PlayString(PSLR);
 }
-static void _menu(void)
+void _menu()
 { // MENU
 	ismenu = true;
 	select = 0;
 }
 
-static void _nd(void)
+void _nd()
 { // ND
 	PlayString(PSND);
 }
-static void _newnumber(void)
+void _newnumber()
 { // NEW number
 	if (isnewnumber)
 	{ // New number
@@ -549,9 +552,9 @@ static void _newnumber(void)
 	}
 }
 
-static void _nop(void) {} // NOP - no operation
+void _nop() {} // NOP - no operation
 
-static void _numinput(void)
+void _numinput()
 { // NUM Numeric input (0...9)
 	_newnumber();
 	if (isdot)
@@ -562,16 +565,16 @@ static void _numinput(void)
 		stack[0] += key - KEY_14;
 	}
 }
-static void _p2r(void)
+void _p2r()
 { // P2R
 	PlayString(PSP2R);
 }
-static void _recplay(void)
+void _recplay()
 { // Prepare variables for REC or PLAY
 	recslot = key - KEY_2;
 	recptr = EEREC + recslot * MAXREC;
 }
-static void _play(void)
+void _play()
 { // PLAY
 	_recplay();
 	isplay = isnewnumber = true;
@@ -579,7 +582,7 @@ static void _play(void)
 
 
 
-static float _pow(void)
+static float _pow()
 { // POW
 	_swap();
 	_ln();
@@ -599,62 +602,64 @@ static float _pow10(int8_t e)
 }
 
 
-static void _pv(void)
+void _pv()
 { // PV
 	PlayString(PSPV);
 }
 
-static void _r2p(void)
+void _r2p()
 { // R2P
 	PlayString(PSR2P);
 }
 
-static void _rec(void)
+void _rec()
 { // REC
 	_recplay();
 	isrec = true;
 }
-static void _rotup(void)
+void _rotup()
 { // ROTup
 	for (uint8_t i = 0; i < STACK_SIZE - 2; i++)
 		_rot();
+	
 }
-static void _rot(void)
+void _rot()
 { // ROT
 	float tmp = stack[0];
 	StackPull();
 	stack[STACK_SIZE - 2] = tmp;
+	isshowstack = true;
 }
-static void _setcmdkey(void)
+void _setcmdkey()
 { // SETCMDKEY
 	if (IsStackXFrom0to9)
 		EEPROM.write(EECMDKEY + (uint8_t)stack[0], (uint8_t)stack[1]);
 }
-static void _setconst(void)
+void _setconst()
 { // SETCONST
 	if (IsStackXFrom0to9)
 		EEPROM.put(EECONST + (uint8_t)stack[0], stack[1]);
 }
 
-static void _shadowload1(void)
+void _shadowload1()
 { // Load stack from shadow buffer from pos 1
 	LoadStackFromShadowBuffer(1);
 }
-static void _shadowload2(void)
+void _shadowload2()
 { // Load stack from shadow buffer from pos 2
 	LoadStackFromShadowBuffer(2);
 }
 
-static void _sin(void)
+void _sin()
 { // SIN
 	stack[0] = _exp_sin_asin(_to_rad(stack[0]), BITSIN);
 }
-static void _sinh(void)
+void _sinh()
 { // SINH
 	PlayString(PSSINH);
 }
 
-static void _sqrt(void)
+void _sqrt()
 { // SQRT
 	if (stack[0] != 0.0)
 	{
@@ -663,39 +668,40 @@ static void _sqrt(void)
 		_exp();
 	}
 }
-static void _stat(void)
+void _stat()
 { // STAT
 	_sum2stack();
 	PlayString(PSSTAT);
 }
 
 
-static void _sum(void)
+void _sum()
 { // SUM
 	PlayString(PSSUM);
 }
-static void _sum1(void)
+void _sum1()
 { // SUM addon
 	for (uint8_t i = 0; i < STACK_SIZE; i++)
 		sum[i] += stack[i];
 	_sum2stack(); // Show n
 	Recall();
 }
-static void _sum2stack(void)
+void _sum2stack()
 { // Copies sum[] to stack[] (including mem)
 	memmove(stack, sum, STACK_SIZE * sizeof(float));
 }
-static void _swap(void)
+void _swap()
 { // SWAP
 	float tmp = stack[0];
 	stack[0] = stack[1];
 	stack[1] = tmp;
+	isshowstack = true;
 }
-static void _tan(void)
+void _tan()
 { // TAN
 	PlayString(PSTAN);
 }
-static void _tanh(void)
+void _tanh()
 { // TANH
 	PlayString(PSTANH);
 }
@@ -720,10 +726,10 @@ static float _exp_sin_asin(float f, uint8_t nr)
 	return (result);
 }
 
-static void printfloat(float f, uint8_t mh, uint8_t y)
+void PrintFloat(float f, uint8_t h, uint8_t y)
 {
-	int32_t m;
-	int8_t  e;
+	uint32_t m;
+	int8_t e;
 
 	sbuf[0] = CHARSPACE;
 	if (f < 0) { f = -f; sbuf[0] = '-'; }
@@ -746,9 +752,9 @@ static void printfloat(float f, uint8_t mh, uint8_t y)
 	sbuf[8] = _tens(e) + '0';
 	sbuf[9] = _ones(e) + '0';
 
-	PrintCharAt(sbuf[0], CHAR_SIZE_M, mh, 0, y);
-	PrintCharAt(sbuf[1], CHAR_SIZE_M, mh, 11, y);
-	PrintCharAt('.', CHAR_SIZE_M, mh, 22, y);
+	PrintCharAt(sbuf[0], CHAR_SIZE_M, h, 0, y);
+	PrintCharAt(sbuf[1], CHAR_SIZE_M, h, 11, y);
+	PrintCharAt('.', CHAR_SIZE_M, h, 22, y);
 
 	uint8_t nonzero = false;
 	for (uint8_t i = 6; i >= 2; --i)
@@ -756,52 +762,61 @@ static void printfloat(float f, uint8_t mh, uint8_t y)
 		if (sbuf[i] != '0' || nonzero)
 		{
 			nonzero = true;
-			PrintCharAt(sbuf[i], CHAR_SIZE_M, mh, 11 * i + 11, y);
+			PrintCharAt(sbuf[i], CHAR_SIZE_M, h, 11 * i + 11, y);
 		}
 	}
 
 	for (uint8_t i = 7; i <= 9; i++)
 	{
-		PrintCharAt(sbuf[i], CHAR_SIZE_M, CHAR_SIZE_M, 11 * i + 19, 0);
+		PrintCharAt(sbuf[i], CHAR_SIZE_M, _min(CHAR_SIZE_M, h), 11 * i + 19, y);
 	}
 
 }
 
-static void printscreen(void)
+void PrintScreen()
 {
 	cls();
 
-	uint8_t mh = CHAR_SIZE_M; // Mantissa height
-	printbitshift = 1; // Shift second line one pixel down
+	uint8_t i;
+	uint8_t h = CHAR_SIZE_M;
 
+	printbitshift = 1;
 	if (isplaystring || isplay)
 	{
-		PrintStringAt("RUN", CHAR_SIZE_M, CHAR_SIZE_M, 0, 2); // Print running message
+		PrintStringAt("RUN", CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
 	}
 	else if (ismenu)
-	{ // Print MENU above F-keys (789)
+	{
 		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
 			strcpy_P(sbuf, (char *)pgm_read_word(&(cmd[select * FKEYNR + i])));
-			PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 47 * i, 2);
+			PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
 		}
 	}
 	else
 	{
 		
-		sbuf[2] = NULL; // Print record and/or shift sign
+		sbuf[2] = NULL;
 		sbuf[0] = sbuf[1] = CHARSPACE;
-		if (isrec)
-			sbuf[0] = CHARREC;
-		if (isf)
-			sbuf[1] = CHARSHIFT;
+		if (isrec) sbuf[0] = CHARREC;
+		if (isf) sbuf[1] = CHARSHIFT;
 		PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 106, 2);
-		mh = CHAR_SIZE_L;
+		h = CHAR_SIZE_L;
 	}
 
 	printbitshift = 0;
 	if (!isplaystring && !isplay)
-		printfloat(stack[0], mh, 0); // Print stack[0]
+	{
+		if (isshowstack)
+		{
+			for (i = 0; i <= STACK_SIZE - 2; ++i)
+				PrintFloat(stack[STACK_SIZE - 2 - i], CHAR_SIZE_S, i);
+		}
+		else
+		{
+			PrintFloat(stack[0], h, 0);
+		}
+	}
 
 	display();
 }

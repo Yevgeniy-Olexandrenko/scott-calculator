@@ -9,7 +9,7 @@
 static uint8_t eachframemillis, thisframestart, lastframedurationms;
 
 // True if frame was just rendered
-static bool justrendered;
+static uint8_t justrendered;
 
 // Shifts printed character down
 static uint8_t printbitshift = 0;
@@ -32,14 +32,14 @@ static uint8_t expand2bit(uint8_t b)
 }
 
 // Delay (with timer) in ms with 8 bit duration
-static void delayshort(uint8_t ms)
+void delayshort(uint8_t ms)
 {
 	long t = millis();
 	while ((uint8_t)(millis() - t) < ms);
 }
 
 // Print char c with width and height (1, 2 or 4)
-static void PrintChar(uint8_t c, uint8_t w, uint8_t h)
+void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 {
 	uint8_t tx = dx;
 	for (uint8_t k = 0; k < h; k++)
@@ -62,43 +62,44 @@ static void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 }
 
 // Print sized char c at (x|y)
-static void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
 	PrintChar(c, w, h);
 }
 
 // Print string
-static void PrintString(char *s, uint8_t w, uint8_t h)
+void PrintString(char *s, uint8_t w, uint8_t h)
 {
 	uint8_t tx = dx, ty = dy;
 	for (uint8_t l = strlen(s), i = 0; i < l; i++)
 	{
-		PrintCharAt(s[i], w, h, tx + i * (FONT_WIDTH + 1) * w, ty);
+		//PrintCharAt(s[i], w, h, tx + i * (FONT_WIDTH + 1) * w, ty);
+		PrintCharAt(s[i], w, h, tx + i * (FONT_WIDTH * w + 1), ty);
 	}
 }
 
 // Print sized string s at (x|y)
-static void PrintStringAt(char *s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+void PrintStringAt(char *s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
 	PrintString(s, w, h);
 }
 
 // Clear screen
-static void cls(void)
+void cls()
 {
 	dfill(0x00);
 }
 
 // Swap GDDRAM and render
-static void display(void)
+void display()
 { 
 	dswap();
 }
 
 // Calculate frameduration
-static void setframerate(uint8_t rate)
+void setframerate(uint8_t rate)
 { 
 	eachframemillis = 1000 / rate;
 }
@@ -109,7 +110,7 @@ ISR(PCINT0_vect)
 }
 
 // Execute sleep mode
-static void execsleep(void)
+void execsleep()
 { 
 	sleep_enable();
 	sleep_cpu();
@@ -119,7 +120,7 @@ static void execsleep(void)
 }
 
 // Goto deep sleep mode
-static void sleep(void)
+void sleep()
 {
 	doff();
 	delayshort(200); // Prevent instant wakeup
@@ -130,7 +131,7 @@ static void sleep(void)
 }
 
 // Idle, while waiting for next frame
-static void idle(void)
+void idle()
 { 
 	set_sleep_mode(SLEEP_MODE_IDLE);
 	power_adc_disable(); // Disable ADC (do not disable timer0; timer1 is disabled from last idle)
@@ -138,7 +139,7 @@ static void idle(void)
 }
 
 // Wait (idle) for next frame
-static bool nextframe(void)
+static uint8_t nextframe()
 {
 	uint8_t now = (uint8_t)millis(), framedurationms = now - thisframestart;
 	if (justrendered)

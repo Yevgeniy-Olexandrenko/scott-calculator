@@ -83,10 +83,13 @@ void loop()
 		key = KEY_DUMMY;
 	}
 	else if (key == KEY_15)
+	{
 		_dot(); // ### Entering decimals demanded
+	}
 
 	if (key)
 	{ // ### Execute key
+		isshowstack = false;
 		if (key != KEY_DUMMY)
 		{ // Printscreen only
 			if (ismenu)
@@ -131,6 +134,6 @@ void loop()
 					(*dispatch[key - KEY_4])(); // Dispatch key (1d: 2c; 3e< 4x= 5s> 6f? + other) due to function table
 			}
 		}
-		printscreen(); // Print screen every keypress (or if key == KEY_DUMMY)
+		PrintScreen(); // Print screen every keypress (or if key == KEY_DUMMY)
 	}
 }
