@@ -6,7 +6,6 @@
 
 #define POWEROFFTIME 30	  // Time for auto poweroff in s
 #define DIMTIME 10		  // Time for auto displaydim in s
-#define MAXSTRBUF 12	  // Maximal length of string buffer sbuf[]
 #define STACK_SIZE 5		  // Size of floatstack
 #define TINYNUMBER 1e-7	  // Number for rounding to 0
 #define PI 3.14159265358979f
@@ -38,23 +37,22 @@
 
 static uint8_t key;                                // Holds entered key
 static uint8_t oldkey;                             // Old key - use for debouncing
-static char    sbuf[MAXSTRBUF];                    // Holds string to print
 static float   stack[STACK_SIZE];                  // Float stack (XYZT) and memory
-static uint8_t    isnewnumber = true;                 // True if stack has to be lifted before entering a new number
-static uint8_t    ispushed = false;                   // True if stack was already pushed by ENTER
-static uint8_t    isShowStack = false;
+static uint8_t isnewnumber = true;                 // True if stack has to be lifted before entering a new number
+static uint8_t ispushed = false;                   // True if stack was already pushed by ENTER
+static uint8_t isShowStack = false;
 static uint8_t decimals = 0;                       // Number of decimals entered - used for input after decimal dot
-static uint8_t    isdot = false;                      // True if dot was pressed and decimals will be entered
-static uint8_t    isShift = false;                        // true if f is pressed
-static uint8_t    isMenu = false;                     // True if menu demanded
+static uint8_t isdot = false;                      // True if dot was pressed and decimals will be entered
+static uint8_t isShift = false;                        // true if f is pressed
+static uint8_t isMenu = false;                     // True if menu demanded
 static uint8_t select = 0;                         // Selection number or playstring position
-static uint8_t    isplaystring = false;               // True if string should be played
+static uint8_t isplaystring = false;               // True if string should be played
 static uint8_t brightness;                         // Contrast
-static uint8_t    isfirstrun = true;                  // Allows first run of loop and printscreen without key query
+static uint8_t isfirstrun = true;                  // Allows first run of loop and printscreen without key query
 static long    timestamp = 0;                      // Needed for timing of power manangement
-static uint16_t     recptr = 0;                         // Pointer to recording step
+static uint16_t recptr = 0;                         // Pointer to recording step
 static uint8_t recslot = 0;                        // Slot number for recording to EEPROM
-static uint8_t    isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
+static uint8_t isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
 static float   sum[STACK_SIZE] = { 0.f };	       // Memory to save statistic sums
 static float   shadow[STACK_SIZE] = { 0.f };        // Shadow memory (buffer) for stack
 static uint8_t restore;                            // Position of stack salvation (including mem)
@@ -316,6 +314,16 @@ void X_Is_Y_Div_X()
 	StackPullUpper();
 }
 
+// Math
+static float _pow10(int8_t e)
+{
+	float f = 1.f;
+	if (e > 0)
+		while (e--) f *= 10.f;
+	else
+		while (e++) f /= 10.f;
+	return f;
+}
 
 
 
@@ -352,7 +360,6 @@ void _p2r();
 void _recplay();
 void _play();
 static float _pow();
-static float _pow10(int8_t e);
 void _pv();
 void _r2p();
 void _rec();
@@ -592,17 +599,9 @@ static float _pow()
 	X_Is_X_Mul_Y();
 	_exp();
 }
-static float _pow10(int8_t e)
-{ // POW10 10^x
-	float f = 1.0;
-	if (e > 0)
-		while (e--)
-			f *= 10;
-	else
-		while (e++)
-			f /= 10;
-	return (f);
-}
+
+
+
 
 
 void _pv()
@@ -663,13 +662,13 @@ void _sinh()
 }
 
 void _sqrt()
-{ // SQRT
-	if (stack[0] != 0.0)
-	{
+{ 
+	//if (stack[0] != 0.0)
+	//{
 		_ln();
 		stack[0] *= 0.5;
 		_exp();
-	}
+	//}
 }
 void _stat()
 { // STAT
@@ -729,51 +728,71 @@ static float _exp_sin_asin(float f, uint8_t nr)
 	return (result);
 }
 
+#define DIGIT_WIDTH (FONT_WIDTH * CHAR_SIZE_M + 1)
+
+#define M_SIGN      (0)
+#define M_DIGIT1    (M_SIGN + DIGIT_WIDTH)
+#define M_POINT     (M_DIGIT1 + DIGIT_WIDTH - 2)
+#define M_DIGIT2    (M_POINT + DIGIT_WIDTH - 4)
+
+#define E_DIGIT2    (128 - (DIGIT_WIDTH - 1))
+#define E_DIGIT1    (E_DIGIT2 - DIGIT_WIDTH)
+#define E_SIGN      (E_DIGIT1 - DIGIT_WIDTH)
+
 void PrintFloat(float f, uint8_t h, uint8_t y)
 {
-	uint32_t m;
-	int8_t e;
-
-	sbuf[0] = CHARSPACE;
-	if (f < 0) { f = -f; sbuf[0] = '-'; }
-
-	e = log(f) / log(10);
-	m = (f / _pow10(e - 5)) + 0.5;
-	if (m > 0 && m < 1e5)
+	if (isnan(f))
 	{
-		m = (f / _pow10(--e - 5)) + 0.5;
+		PrintStringAt(F("ERROR"), CHAR_SIZE_M, h, M_DIGIT1, y);
 	}
-
-	for (uint8_t i = 6; i > 0; i--)
+	else
 	{
-		sbuf[i] = _ones(m) + '0';
-		m /= 10;
-	}
-
-	sbuf[7] = CHARSPACE;
-	if (e < 0) { e = -e; sbuf[7] = '-';	}
-	sbuf[8] = _tens(e) + '0';
-	sbuf[9] = _ones(e) + '0';
-
-	PrintCharAt(sbuf[0], CHAR_SIZE_M, h, 0, y);
-	PrintCharAt(sbuf[1], CHAR_SIZE_M, h, 11, y);
-	PrintCharAt('.', CHAR_SIZE_M, h, 22, y);
-
-	uint8_t nonzero = false;
-	for (uint8_t i = 6; i >= 2; --i)
-	{
-		if (sbuf[i] != '0' || nonzero)
+		if (f < 0)
 		{
-			nonzero = true;
-			PrintCharAt(sbuf[i], CHAR_SIZE_M, h, 11 * i + 11, y);
+			f = -f;
+			PrintCharAt('-', CHAR_SIZE_M, h, M_SIGN, y);
+		}
+
+		if (isinf(f))
+		{
+			PrintStringAt(F("INFINITY"), CHAR_SIZE_M, h, M_DIGIT1, y);
+		}
+		else
+		{
+			int8_t e; uint32_t m;
+			e = (int8_t)(log(f) / log(10.f));
+			m = (uint32_t)((f / _pow10(e - 5)) + 0.5f);
+			if (m > 0 && m < 1e5)
+			{
+				m = (uint32_t)((f / _pow10(--e - 5)) + 0.5f);
+			}
+
+			if (e)
+			{
+				uint8_t s = _min(CHAR_SIZE_M, h);
+				if (e < 0)
+				{
+					e = -e;
+					PrintCharAt('-', CHAR_SIZE_M, s, E_SIGN, y);
+				}
+				PrintCharAt('0' + _tens(e), CHAR_SIZE_M, s, E_DIGIT1, y);
+				PrintCharAt('0' + _ones(e), CHAR_SIZE_M, s, E_DIGIT2, y);
+			}
+
+			PrintCharAt('.', CHAR_SIZE_M, h, M_POINT, y);
+			uint8_t nonzero = false;
+			for (int8_t i = 4; i >= 0; --i, m /= 10)
+			{
+				uint8_t ones = _ones(m);
+				if (ones || nonzero)
+				{
+					PrintCharAt('0' + ones, CHAR_SIZE_M, h, M_DIGIT2 + i * DIGIT_WIDTH, y);
+					nonzero = true;
+				}
+			}
+			PrintCharAt('0' + _ones(m), CHAR_SIZE_M, h, M_DIGIT1, y);
 		}
 	}
-
-	for (uint8_t i = 7; i <= 9; i++)
-	{
-		PrintCharAt(sbuf[i], CHAR_SIZE_M, _min(CHAR_SIZE_M, h), 11 * i + 19, y);
-	}
-
 }
 
 void PrintScreen()
