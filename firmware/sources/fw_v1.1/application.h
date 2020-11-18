@@ -62,7 +62,7 @@ const char c02[] PROGMEM = "1/X"; // Reciprocal
 
 const char c03[] PROGMEM = "EXP"; // Exponential
 const char c04[] PROGMEM = "LN";  // Natural logarithm
-const char c05[] PROGMEM = "?";   // Gamma function (due to Nemes)
+const char c05[] PROGMEM = "X?";   // Gamma function (due to Nemes)
 
 const char c06[] PROGMEM = ">P";  // Rectangular to polar coordinates
 const char c07[] PROGMEM = ">R";  // Polar to rectangular coordinates
@@ -429,13 +429,13 @@ void _ce()
 		if (stack[0] > TINYNUMBER && decimals > 0)
 		{
 			decimals--;
-			stack[0] = (long)(stack[0] * _pow10(decimals)) / _pow10(decimals);
+			stack[0] = (uint32_t)(stack[0] * _pow10(decimals)) / _pow10(decimals);
 		}
 		else
 			isdot = false;
 	}
 	else
-		stack[0] = (long)(stack[0] / 10);
+		stack[0] = (uint32_t)(stack[0] / 10);
 }
 void _ceclx()
 { // CE/CLX
