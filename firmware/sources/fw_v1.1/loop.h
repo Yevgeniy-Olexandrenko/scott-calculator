@@ -25,7 +25,7 @@ void loop()
 	uint8_t elapsedTime = (millis() - timestamp) / 1000L;
 	if (elapsedTime > POWEROFFTIME)
 	{
-		PowerOff();
+		sleep();
 	}
 	else if (elapsedTime > DIMTIME)
 	{

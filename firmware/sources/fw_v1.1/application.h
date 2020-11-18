@@ -8,13 +8,12 @@
 #define DIMTIME 10		  // Time for auto displaydim in s
 #define STACK_SIZE 5		  // Size of floatstack
 #define TINYNUMBER 1e-7	  // Number for rounding to 0
-#define PI 3.14159265358979f
 #define MAXITERATE 100	  // Maximal number of Taylor series loops to iterate
 #define FKEYNR 3		  // 3 function keys
 #define KEY_DUMMY 0xff	  // Needed to enter key-loop and printstring
 
 #define EECONTRAST 0	  // EEPROM address of brightness (1 byte)
-#define EESTACK 1		  // EEPROM address of stack ((4+1)*4 bytes)
+#define EESTACK 1		  // EEPROM address of stack ((4+1)*4 bytes) (not used now!!!)
 #define EECMDKEY 21		  // EEPROM address of command keys (10 bytes)
 #define EECONST 31		  // EEPROM address of constants (10*4 bytes)
 #define EEREC 71		  // EEPROM address Starting EE-address for saving "type recorder"
@@ -49,7 +48,7 @@ static uint8_t select = 0;                         // Selection number or playst
 static uint8_t isplaystring = false;               // True if string should be played
 static uint8_t brightness;                         // Contrast
 static uint8_t isfirstrun = true;                  // Allows first run of loop and printscreen without key query
-static long    timestamp = 0;                      // Needed for timing of power manangement
+static uint32_t timestamp = 0;                      // Needed for timing of power manangement
 static uint16_t recptr = 0;                         // Pointer to recording step
 static uint8_t recslot = 0;                        // Slot number for recording to EEPROM
 static uint8_t isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
@@ -174,26 +173,9 @@ char playbuf[40]; // Holds sii[]
 
 
 
-
-
-
-
-
-
-// Save whole stack to EEPROM
-void SaveStack()
-{ 
-	uint8_t *p = (uint8_t *)stack;
-	for (uint8_t i = 0; i < STACK_SIZE * sizeof(float); i++)
-		EEPROM[EESTACK + i] = *p++;
-}
-
-// Load whole stack from EEMPROM
-void LoadStack()
-{ 
-	uint8_t *p = (uint8_t *)stack;
-	for (uint8_t i = 0; i < STACK_SIZE * sizeof(float); i++)
-		*p++ = EEPROM[EESTACK + i];
+void ResetStack()
+{
+	for (uint8_t i = 0; i < STACK_SIZE; i++) stack[i] = 0.f;
 }
 
 // Save stack to shadow buffer (including mem)
@@ -284,9 +266,9 @@ void ReadBattery()
 
 void PowerOff()
 {
-	EEPROM[EECONTRAST] = brightness;
-	SaveStack();
-	sleep();
+	
+	
+	
 }
 
 
@@ -385,9 +367,9 @@ void (*dispatch[])() = {
 	&_numinput,							  // Normal calculator keys (dispatch 0)     OFFSET: 0
 	&_nop, &_ceclx, &_ee, &_enter, &_chs, // 1d:15 2c;13 3e<5 4x=16 5s>9 (no 6f?1)
 	&ReadBattery, &Recall, &Store, &X_Is_Y_Sub_X,		  // Shiftkeys 0 1 2 3  OFFSET: 6
-	&_const, &_cmdkey, &X_Is_X_Mul_Y, &_menu,	  //         4 5 6 7
-	&_sum, &X_Is_Y_Div_X, &_swap, &PowerOff,		  //             8 9 d c
-	&_rotup, &X_Is_X_Add_Y, &_rot, &_nop,		  //              e x s f
+	&_const, &_cmdkey, &X_Is_X_Mul_Y, &_menu,	          //         4 5 6 7
+	&_sum, &X_Is_Y_Div_X, &_swap, &sleep,		          //             8 9 d c
+	&_rotup, &X_Is_X_Add_Y, &_rot, &_nop,		          //              e x s f
 
 	&_sqrt, &_pow, &_inv,				  // MENU                          OFFSET: 21 //22
 	&_exp, &_ln, &_gamma,				  // Mathematical functions and settings
@@ -485,11 +467,14 @@ void _const()
 	if (IsStackXFrom0to9)
 		EEPROM.get(EECONST + (uint8_t)stack[0], stack[0]);
 }
+
 void _contrast()
-{ // CONTRAST
+{
 	brightness = stack[0];
 	dcontrast(brightness);
+	EEPROM[EECONTRAST] = brightness;
 }
+
 void _cos()
 { // COS
 	PlayString(PSCOS);
