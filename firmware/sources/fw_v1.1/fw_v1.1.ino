@@ -735,6 +735,12 @@
 #include <avr/sleep.h> // Needed for sleeping
 #include <EEPROM.h>    // For saving data to EEPROM
 
+#undef FPSTR
+#undef F
+class __FlashStringHelper;
+#define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
+#define F(string_literal) (FPSTR(PSTR(string_literal)))
+
 #include "font.h"
 #include "display.h"
 #include "keyboard.h"

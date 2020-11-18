@@ -61,29 +61,22 @@ void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 	}
 }
 
-// Print sized char c at (x|y)
 void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
 	PrintChar(c, w, h);
 }
 
-// Print string
-void PrintString(char *s, uint8_t w, uint8_t h)
-{
-	uint8_t tx = dx, ty = dy;
-	for (uint8_t l = strlen(s), i = 0; i < l; i++)
-	{
-		//PrintCharAt(s[i], w, h, tx + i * (FONT_WIDTH + 1) * w, ty);
-		PrintCharAt(s[i], w, h, tx + i * (FONT_WIDTH * w + 1), ty);
-	}
-}
-
-// Print sized string s at (x|y)
-void PrintStringAt(char *s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	dsetcursor(x, y);
-	PrintString(s, w, h);
+	const char* ptr = (const char*)s;
+	uint8_t ww = FONT_WIDTH * w + 1;
+	while(uint8_t ch = pgm_read_byte(ptr++))
+	{
+		PrintCharAt(ch, w, h, x, y);
+		x += ww;
+	}
 }
 
 // Clear screen

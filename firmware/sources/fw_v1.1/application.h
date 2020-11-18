@@ -786,24 +786,22 @@ void PrintScreen()
 	printbitshift = 1;
 	if (isplaystring || isplay)
 	{
-		PrintStringAt("RUN", CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
+		PrintStringAt(F("RUN"), CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
 	}
 	else if (isMenu)
 	{
 		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
-			strcpy_P(sbuf, (char *)pgm_read_word(&(cmd[select * FKEYNR + i])));
-			PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
+			void * ptr = pgm_read_word(&cmd[select * FKEYNR + i]);
+			PrintStringAt(FPSTR(ptr), CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
 		}
 	}
 	else
 	{
-		
-		sbuf[2] = NULL;
-		sbuf[0] = sbuf[1] = CHARSPACE;
-		if (isrec) sbuf[0] = CHARREC;
-		if (isShift) sbuf[1] = CHARSHIFT;
-		PrintStringAt(sbuf, CHAR_SIZE_M, CHAR_SIZE_M, 106, 2);
+		if (isrec)
+			PrintCharAt(CHARREC, CHAR_SIZE_M, CHAR_SIZE_M, 106, 2);
+		if (isShift)
+			PrintCharAt(CHARSHIFT, CHAR_SIZE_M, CHAR_SIZE_M, 106 + 11, 2);
 		h = CHAR_SIZE_L;
 	}
 
