@@ -266,9 +266,8 @@ void ReadBattery()
 
 void PowerOff()
 {
-	
-	
-	
+	sleep();
+	// TODO
 }
 
 
@@ -368,7 +367,7 @@ void (*dispatch[])() = {
 	&_nop, &_ceclx, &_ee, &_enter, &_chs, // 1d:15 2c;13 3e<5 4x=16 5s>9 (no 6f?1)
 	&ReadBattery, &Recall, &Store, &X_Is_Y_Sub_X,		  // Shiftkeys 0 1 2 3  OFFSET: 6
 	&_const, &_cmdkey, &X_Is_X_Mul_Y, &_menu,	          //         4 5 6 7
-	&_sum, &X_Is_Y_Div_X, &_swap, &sleep,		          //             8 9 d c
+	&_sum, &X_Is_Y_Div_X, &_swap, &PowerOff,		          //             8 9 d c
 	&_rotup, &X_Is_X_Add_Y, &_rot, &_nop,		          //              e x s f
 
 	&_sqrt, &_pow, &_inv,				  // MENU                          OFFSET: 21 //22
