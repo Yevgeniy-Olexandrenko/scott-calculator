@@ -730,14 +730,6 @@
       2.067834E-15  _Po Magnetic flux quantum
 */
 
-#define ALT_I2C
-
-#ifdef ALT_I2C
-#include <TinyI2CMaster.h>
-#else
-#include <TinyWireM.h> // I2C wire communication with display
-#endif
-
 #include <avr/power.h> // Needed for power management
 #include <avr/sleep.h> // Needed for sleeping
 #include <EEPROM.h>    // For saving data to EEPROM
@@ -749,10 +741,14 @@ class __FlashStringHelper;
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
 #define F(string_literal) (FPSTR(PSTR(string_literal)))
 
-#include "font.h"
-#include "display.h"
-#include "keyboard.h"
-#include "system.h"
-#include "application.h"
-#include "setup.h"
-#include "loop.h"
+#include "hw_usi_i2c.h"
+#include "hw_display.h"
+#include "hw_clock.h"
+#include "hw_keyboard.h"
+
+//	TODO:
+#include "sw_font.h"
+#include "sw_system.h"
+#include "sw_application.h"
+#include "sw_setup.h"
+#include "sw_loop.h"

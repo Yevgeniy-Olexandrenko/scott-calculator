@@ -28,41 +28,25 @@ static const uint8_t inits[] PROGMEM =
 // Initialize communication
 void dbegin()
 {
-	#ifdef ALT_I2C
 	TinyI2C.init();
-	#else
-	TinyWireM.begin();
-	#endif
 }
 
 // Start communication
 void dsendstart()
 { 
-	#ifdef ALT_I2C
 	TinyI2C.start(DISPLAY_ADDRESS, 0);
-	#else
-	TinyWireM.beginTransmission(DISPLAY_ADDRESS);
-	#endif
 }
 
 // Send byte
 static uint8_t dsendbyte(uint8_t b)
 { 
-	#ifdef ALT_I2C
 	return TinyI2C.write(b);
-	#else
-	return (TinyWireM.write(b));
-	#endif
 }
 
 // Stop communication
 void dsendstop()
 { 
-	#ifdef ALT_I2C
 	TinyI2C.stop();
-	#else
-	TinyWireM.endTransmission();
-	#endif
 }
 
 // Start data transfer
