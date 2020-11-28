@@ -32,21 +32,21 @@ void loop()
 		dcontrast(0x00);
 	}
 
-	if (isplaystring)
+	if (isPlayString)
 	{ // ### Play string
 		key = playbuf[select];
 		if (key == NULL)
 		{						  // Stop playstring
 			LoadStackFromShadowBuffer(restore); // Restore upper part of stack
-			isplaystring = false;
-			isnewnumber = true;
+			isPlayString = false;
+			isNewNumber = true;
 			key = KEY_DUMMY;
 		}
 		else
 		{ // Go on for dispatching
 			if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
 			{ // New number (0-9,.)
-				isnewnumber = true;
+				isNewNumber = true;
 				ispushed = false;
 			}
 			select++;
@@ -79,7 +79,7 @@ void loop()
 
 	if (key == KEY_A0_F)
 	{
-		isShift = !isShift;
+		isShift ^= true;
 		key = KEY_DUMMY;
 	}
 	else if (key == KEY_C3_D)
@@ -92,7 +92,6 @@ void loop()
 		isShowStack = false;
 		if (key != KEY_DUMMY)
 		{
-
 			if (isMenu)
 			{
 				uint8_t limit = numberofcommands / FKEYNR - 1;
@@ -110,17 +109,18 @@ void loop()
 				}
 				else if (key >= KEY_B2_1 && key <= KEY_D2_3)
 				{
-					(*dispatch[22 + select * FKEYNR + key - KEY_B2_1])();
-					isnewnumber = true;
+					uint8_t index = select * FKEYNR + (key - KEY_B2_1);
+					(*dispatch[22 + index])();
+					isNewNumber = true;
 					isMenu = false;
 				}
 			}
 
 			else if (isShift)
 			{
-				(*dispatch[key - KEY_B3_0 + 6])();
+				(*dispatch[6 + key - KEY_B3_0])();
 				isShift = ispushed = false;
-				isnewnumber = true;
+				isNewNumber = true;
 			}
 
 			else

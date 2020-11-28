@@ -37,7 +37,7 @@
 static uint8_t key;                                // Holds entered key
 static uint8_t oldkey;                             // Old key - use for debouncing
 static float   stack[STACK_SIZE];                  // Float stack (XYZT) and memory
-static uint8_t isnewnumber = true;                 // True if stack has to be lifted before entering a new number
+static uint8_t isNewNumber = true;                 // True if stack has to be lifted before entering a new number
 static uint8_t ispushed = false;                   // True if stack was already pushed by ENTER
 static uint8_t isShowStack = false;
 static uint8_t decimals = 0;                       // Number of decimals entered - used for input after decimal dot
@@ -45,7 +45,7 @@ static uint8_t isdot = false;                      // True if dot was pressed an
 static uint8_t isShift = false;                        // true if f is pressed
 static uint8_t isMenu = false;                     // True if menu demanded
 static uint8_t select = 0;                         // Selection number or playstring position
-static uint8_t isplaystring = false;               // True if string should be played
+static uint8_t isPlayString = false;               // True if string should be played
 static uint8_t brightness;                         // Contrast
 static uint8_t isfirstrun = true;                  // Allows first run of loop and printscreen without key query
 static uint32_t timestamp = 0;                      // Needed for timing of power manangement
@@ -244,7 +244,7 @@ void PlayString(uint8_t slot)
 	SaveStackToShadowBuffer();
 	strcpy_P(playbuf, (char *)pgm_read_word(&(pstable[slot])));
 	select = 0;
-	isnewnumber = isplaystring = true;
+	isNewNumber = isPlayString = true;
 	ispushed = isdot = false;
 }
 
@@ -296,7 +296,7 @@ void X_Is_Y_Div_X()
 }
 
 // Math
-static float _pow10(int8_t e)
+static float Pow10(int8_t e)
 {
 	float f = 1.f;
 	if (e > 0)
@@ -306,7 +306,8 @@ static float _pow10(int8_t e)
 	return f;
 }
 
-
+// Calculate exp, sin or asin
+static float _exp_sin_asin(float f, uint8_t nr);
 
 // Function pointer array subroutines
 void _acos();
@@ -317,15 +318,15 @@ void _atan();
 void _atanh();
 void _ce();
 void _ceclx();
-void _chs();
-void _clx();
+void ChangeSign();
+void ClearX();
 void _cmdkey();
 void _const();
 void _contrast();
 void _cos();
 void _cosh();
 void _dot();
-void _ee();
+void EnterExp();
 void _enter();
 void _exp();
 void _gamma();
@@ -344,8 +345,8 @@ static float _pow();
 void _pv();
 void _r2p();
 void _rec();
-void _rotup();
-void _rot();
+void RotateStackUp();
+void RotateStackDown();
 void _setcmdkey();
 void _setconst();
 void _shadowload1();
@@ -357,42 +358,78 @@ void _stat();
 void _sum();
 void _sum1();
 void _sum2stack();
-void _swap();
+void SwapStackXY();
 void _tan();
 void _tanh();
 
-// Function pointer array/table
-void (*dispatch[])() = {
-	&_numinput,							  // Normal calculator keys (dispatch 0)     OFFSET: 0
-	&_nop, &_ceclx, &_ee, &_enter, &_chs, // 1d:15 2c;13 3e<5 4x=16 5s>9 (no 6f?1)
-	&ReadBattery, &Recall, &Store, &X_Is_Y_Sub_X,		  // Shiftkeys 0 1 2 3  OFFSET: 6
-	&_const, &_cmdkey, &X_Is_X_Mul_Y, &_menu,	          //         4 5 6 7
-	&_sum, &X_Is_Y_Div_X, &_swap, &PowerOff,		          //             8 9 d c
-	&_rotup, &X_Is_X_Add_Y, &_rot, &_nop,		          //              e x s f
+void (*dispatch[])() = 
+{
+	&_numinput,
+	&_nop,
+	&ClearX,
+	&EnterExp,
+	&_enter,
+	&ChangeSign,
+	&ReadBattery,
 
-	&_sqrt, &_pow, &_inv,				  // MENU                          OFFSET: 21 //22
-	&_exp, &_ln, &_gamma,				  // Mathematical functions and settings
-	&_r2p, &_p2r, &_pv,
-	&_nd, &_stat, &_lr,
-	&_sin, &_cos, &_tan, // Trigonometrical functions
-	&_asin, &_acos, &_atan,
-	&_sinh, &_cosh, &_tanh, // Hyperbolical functions
-	&_asinh, &_acosh, &_atanh,
-	&_setconst, &_setcmdkey, &_contrast, // Settings
-	&_rec, &_rec, &_rec,				 // User definable Menukeys       OFFSET: 48 //49
-	&_play, &_play, &_play,
+	&Recall,
+	&Store,
+	&X_Is_Y_Sub_X,
+	&_const,
+	&_cmdkey,
+	&X_Is_X_Mul_Y,
+	&_menu,
+	&_sum,
+	&X_Is_Y_Div_X,
+	&SwapStackXY,
+	&PowerOff,
+	&RotateStackUp,
+	&X_Is_X_Add_Y,
+	&RotateStackDown,
+	&_nop,
+
+	// MENU
+	&_sqrt,
+	&_pow,
+	&_inv,
+	&_exp,
+	&_ln,
+	&_gamma,
+	&_r2p,
+	&_p2r,
+	&_pv,
+	&_nd,
+	&_stat,
+	&_lr,
+	&_sin,
+	&_cos,
+	&_tan,
+	&_asin,
+	&_acos,
+	&_atan,
+	&_sinh,
+	&_cosh,
+	&_tanh,
+	&_asinh,
+	&_acosh,
+	&_atanh,
+	&_setconst,
+	&_setcmdkey,
+	&_contrast,
+	&_rec,
+	&_rec,
+	&_rec,
+	&_play,
+	&_play,
+	&_play,
 
 	// Hidden links
-	&_sum1, &_sum2stack, &SaveStackToShadowBuffer,
-	&_shadowload1, &_shadowload2
+	&_sum1,
+	&_sum2stack,
+	&SaveStackToShadowBuffer,
+	&_shadowload1,
+	&_shadowload2
 };
-
-
-
-
-
-
-
 
 // Function pointer array subroutines
 
@@ -421,37 +458,17 @@ void _atanh()
 	PlayString(PSATANH);
 }
 
-void _ce()
-{ // CE
-	if (isdot)
-	{
-		if (stack[0] > TINYNUMBER && decimals > 0)
-		{
-			decimals--;
-			stack[0] = (uint32_t)(stack[0] * _pow10(decimals)) / _pow10(decimals);
-		}
-		else
-			isdot = false;
-	}
-	else
-		stack[0] = (uint32_t)(stack[0] / 10);
-}
-void _ceclx()
-{ // CE/CLX
-	if (isnewnumber)
-		_clx();
-	else
-		_ce();
-}
-void _chs()
+void ChangeSign()
 { // CHS
 	stack[0] = -stack[0];
-	isnewnumber = true;
+	isNewNumber = true;
 }
-void _clx()
+
+void ClearX()
 { // CLX
-	stack[0] = 0.0;
+	stack[0] = 0.f;
 }
+
 void _cmdkey()
 { // CMDKEY
 	if (IsStackXFrom0to9)
@@ -491,16 +508,16 @@ void _dot()
 		isdot = true;
 	}
 }
-void _ee()
+void EnterExp()
 { // EE
-	stack[0] = _pow10(stack[0]);
+	stack[0] = Pow10(stack[0]);
 	X_Is_X_Mul_Y();
-	isnewnumber = true;
+	isNewNumber = true;
 }
 void _enter()
 { // ENTER
 	StackPush();
-	ispushed = isnewnumber = true;
+	ispushed = isNewNumber = true;
 }
 void _exp()
 { // EXP
@@ -534,7 +551,7 @@ void _nd()
 }
 void _newnumber()
 { // NEW number
-	if (isnewnumber)
+	if (isNewNumber)
 	{ // New number
 		//if (ispushed) ispushed = false;
 		//else _push();
@@ -542,7 +559,7 @@ void _newnumber()
 			StackPush();
 		stack[0] = 0.0;
 		decimals = 0;
-		isdot = isnewnumber = false;
+		isdot = isNewNumber = false;
 	}
 }
 
@@ -552,7 +569,7 @@ void _numinput()
 { // NUM Numeric input (0...9)
 	_newnumber();
 	if (isdot)
-		stack[0] += (key - KEY_B3_0) / _pow10(++decimals); // Append decimal to number
+		stack[0] += (key - KEY_B3_0) / Pow10(++decimals); // Append decimal to number
 	else
 	{ // Append digit to number
 		stack[0] *= 10;
@@ -571,14 +588,14 @@ void _recplay()
 void _play()
 { // PLAY
 	_recplay();
-	isplay = isnewnumber = true;
+	isplay = isNewNumber = true;
 }
 
 
 
 static float _pow()
 { // POW
-	_swap();
+	SwapStackXY();
 	_ln();
 	X_Is_X_Mul_Y();
 	_exp();
@@ -603,13 +620,13 @@ void _rec()
 	_recplay();
 	isrec = true;
 }
-void _rotup()
+void RotateStackUp()
 { // ROTup
 	for (uint8_t i = 0; i < STACK_SIZE - 2; i++)
-		_rot();
+		RotateStackDown();
 	
 }
-void _rot()
+void RotateStackDown()
 { // ROT
 	float tmp = stack[0];
 	StackPull();
@@ -676,7 +693,7 @@ void _sum2stack()
 { // Copies sum[] to stack[] (including mem)
 	memmove(stack, sum, STACK_SIZE * sizeof(float));
 }
-void _swap()
+void SwapStackXY()
 { // SWAP
 	float tmp = stack[0];
 	stack[0] = stack[1];
@@ -745,10 +762,10 @@ void PrintFloat(float f, uint8_t h, uint8_t y)
 		{
 			int8_t e; uint32_t m;
 			e = (int8_t)(log(f) / log(10.f));
-			m = (uint32_t)((f / _pow10(e - 5)) + 0.5f);
+			m = (uint32_t)((f / Pow10(e - 5)) + 0.5f);
 			if (m > 0 && m < 1e5)
 			{
-				m = (uint32_t)((f / _pow10(--e - 5)) + 0.5f);
+				m = (uint32_t)((f / Pow10(--e - 5)) + 0.5f);
 			}
 
 			if (e)
@@ -787,7 +804,7 @@ void PrintScreen()
 	uint8_t h = CHAR_SIZE_M;
 
 	printbitshift = 1;
-	if (isplaystring || isplay)
+	if (isPlayString || isplay)
 	{
 		PrintStringAt(F("RUN"), CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
 	}
@@ -809,7 +826,7 @@ void PrintScreen()
 	}
 
 	printbitshift = 0;
-	if (!isplaystring && !isplay)
+	if (!isPlayString && !isplay)
 	{
 		if (isShowStack)
 		{
