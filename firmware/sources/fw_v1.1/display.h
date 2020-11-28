@@ -28,25 +28,41 @@ static const uint8_t inits[] PROGMEM =
 // Initialize communication
 void dbegin()
 {
+	#ifdef ALT_I2C
+	TinyI2C.init();
+	#else
 	TinyWireM.begin();
+	#endif
 }
 
 // Start communication
 void dsendstart()
 { 
+	#ifdef ALT_I2C
+	TinyI2C.start(DISPLAY_ADDRESS, 0);
+	#else
 	TinyWireM.beginTransmission(DISPLAY_ADDRESS);
+	#endif
 }
 
 // Send byte
 static uint8_t dsendbyte(uint8_t b)
 { 
+	#ifdef ALT_I2C
+	return TinyI2C.write(b);
+	#else
 	return (TinyWireM.write(b));
+	#endif
 }
 
 // Stop communication
 void dsendstop()
 { 
+	#ifdef ALT_I2C
+	TinyI2C.stop();
+	#else
 	TinyWireM.endTransmission();
+	#endif
 }
 
 // Start data transfer
@@ -131,13 +147,13 @@ void dcontrast(uint8_t contrast)
 // Set cursor to position (x|y)
 void dsetcursor(uint8_t x, uint8_t y)
 { 
+	dx = x;
+	dy = y;
 	dsendcmdstart();
 	dsendbyte(renderram | (y & 0x07));
 	dsendbyte(0x10 | (x >> 4));
 	dsendbyte(x & 0x0f);
 	dsendstop();
-	dx = x;
-	dy = y;
 }
 
 // Fill screen with byte/pattern b

@@ -307,7 +307,25 @@ static float Pow10(int8_t e)
 }
 
 // Calculate exp, sin or asin
-static float _exp_sin_asin(float f, uint8_t nr);
+static float _exp_sin_asin(float f, uint8_t nr)
+{								 // Calculate exp, sin or asin
+	float result = f, frac = f; // Start values for sin or asin
+	if (nr == BITEXP)
+		result = frac = 1.0; // Start values for exp
+	for (int i = 1; _abs(frac) > TINYNUMBER && i < MAXITERATE; i++)
+	{
+		int i2 = 2 * i, i2p = 2 * i + 1, i2m = 2 * i - 1, i2m2 = i2m * i2m;
+		float ffi2i2p = f * f / (i2 * i2p);
+		if (nr == BITEXP)
+			frac *= f / i; // Fraction for exp
+		else if (nr == BITSIN)
+			frac *= -ffi2i2p; // Fraction for sin
+		else
+			frac *= ffi2i2p * i2m2; // Fraction for asin
+		result += frac;
+	}
+	return (result);
+}
 
 // Function pointer array subroutines
 void _acos();
@@ -709,25 +727,7 @@ void _tanh()
 	PlayString(PSTANH);
 }
 
-static float _exp_sin_asin(float f, uint8_t nr)
-{								 // Calculate exp, sin or asin
-	float result = f, frac = f; // Start values for sin or asin
-	if (nr == BITEXP)
-		result = frac = 1.0; // Start values for exp
-	for (int i = 1; _abs(frac) > TINYNUMBER && i < MAXITERATE; i++)
-	{
-		int i2 = 2 * i, i2p = 2 * i + 1, i2m = 2 * i - 1, i2m2 = i2m * i2m;
-		float ffi2i2p = f * f / (i2 * i2p);
-		if (nr == BITEXP)
-			frac *= f / i; // Fraction for exp
-		else if (nr == BITSIN)
-			frac *= -ffi2i2p; // Fraction for sin
-		else
-			frac *= ffi2i2p * i2m2; // Fraction for asin
-		result += frac;
-	}
-	return (result);
-}
+
 
 #define DIGIT_WIDTH (FONT_WIDTH * CHAR_SIZE_M + 1)
 

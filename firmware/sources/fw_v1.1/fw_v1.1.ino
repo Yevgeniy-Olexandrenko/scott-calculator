@@ -730,7 +730,14 @@
       2.067834E-15  _Po Magnetic flux quantum
 */
 
+#define ALT_I2C
+
+#ifdef ALT_I2C
+#include <TinyI2CMaster.h>
+#else
 #include <TinyWireM.h> // I2C wire communication with display
+#endif
+
 #include <avr/power.h> // Needed for power management
 #include <avr/sleep.h> // Needed for sleeping
 #include <EEPROM.h>    // For saving data to EEPROM
