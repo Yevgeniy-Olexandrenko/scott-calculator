@@ -2,7 +2,7 @@
 
 void setup()
 {
-	TinyI2C.init();
+	I2CBusInit();
 	DisplayInit();
 
 	// INIT WAKEUP (with pin change interrupt) ... same pin as keyboard!

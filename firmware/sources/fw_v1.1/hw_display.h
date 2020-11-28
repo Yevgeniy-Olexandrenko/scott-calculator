@@ -28,17 +28,17 @@ static const uint8_t inits[] PROGMEM =
 
 static void ssd1306_send_start()
 { 
-	TinyI2C.start(DISPLAY_ADDRESS, 0);
+	I2CBusStart(DISPLAY_ADDRESS, 0);
 }
 
 static uint8_t ssd1306_send_byte(uint8_t b)
 { 
-	return TinyI2C.write(b);
+	return I2CBusWrite(b);
 }
 
 static void ssd1306_send_stop()
 { 
-	TinyI2C.stop();
+	I2CBusStop();
 }
 
 static void ssd1306_command_start()
