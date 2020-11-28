@@ -505,7 +505,7 @@ void _const()
 void _contrast()
 {
 	brightness = stack[0];
-	dcontrast(brightness);
+	DisplayBrightness(brightness);
 	EEPROM[EECONTRAST] = brightness;
 }
 
@@ -798,7 +798,7 @@ void PrintFloat(float f, uint8_t h, uint8_t y)
 
 void PrintScreen()
 {
-	cls();
+	DisplayFill(0x00);
 
 	uint8_t i;
 	uint8_t h = CHAR_SIZE_M;
@@ -839,5 +839,5 @@ void PrintScreen()
 		}
 	}
 
-	display();
+	DisplayRefresh();
 }

@@ -2,9 +2,8 @@
 
 void setup()
 {
-	// INIT DISPLAY
-	dinit();   // Init display
-	drender(); // Render current half of GDDRAM
+	TinyI2C.init();
+	DisplayInit();
 
 	// INIT WAKEUP (with pin change interrupt) ... same pin as keyboard!
 	pinMode(KPIN, INPUT); // Wakeup pin
@@ -14,7 +13,7 @@ void setup()
 
 	// INIT SYSTEM
 	setframerate(FRAMERATE);
-	dcontrast(brightness = EEPROM[EECONTRAST]);
+	DisplayBrightness(brightness = EEPROM[EECONTRAST]);
 
 	// START
 	ResetStack();

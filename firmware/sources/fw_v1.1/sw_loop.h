@@ -18,8 +18,8 @@ void loop()
 	if (key)
 	{
 		timestamp = millis();
-		dcontrast(brightness);
-		don();
+		DisplayBrightness(brightness);
+		DisplayTurnOn();
 	}
 
 	uint8_t elapsedTime = (millis() - timestamp) / 1000L;
@@ -29,7 +29,7 @@ void loop()
 	}
 	else if (elapsedTime > DIMTIME)
 	{
-		dcontrast(0x00);
+		DisplayBrightness(0x00);
 	}
 
 	if (isPlayString)

@@ -1,15 +1,14 @@
-// DISPLAY
-#define DISPLAY_ADDRESS 0x3C  // I2C slave address
-#define DISPLAY_PAGES   4     // Lines of screen
-#define DISPLAY_COMMAND 0x00  // Command byte
-#define DISPLAY_DATA    0x40  // Data byte
-#define SCREENWIDTH     128   // Screen width in pixel
+#define DISPLAY_ADDRESS 0x3C
+#define DISPLAY_COMMAND 0x00
+#define DISPLAY_DATA    0x40
+#define DISPLAY_WIDTH   128 
+#define DISPLAY_PAGES   4
 
 // Display cursor coordinates
 static uint8_t dx = 0, dy = 0;
 
 // Masks to address GDDRAM of display
-static uint8_t renderram = 0xB0, drawram = 0x40;
+static uint8_t renderram = 0xB4, drawram = 0x40;
 
 // Initialization sequence
 static const uint8_t inits[] PROGMEM =
@@ -25,127 +24,111 @@ static const uint8_t inits[] PROGMEM =
 	0x8D, 0x14	// Charge pump (0x14 enable or 0x10 disable)
 };
 
-// Initialize communication
-void dbegin()
-{
-	TinyI2C.init();
-}
+////////////////////////////////////////////////////////////////////////////////
 
-// Start communication
-void dsendstart()
+static void ssd1306_send_start()
 { 
 	TinyI2C.start(DISPLAY_ADDRESS, 0);
 }
 
-// Send byte
-static uint8_t dsendbyte(uint8_t b)
+static uint8_t ssd1306_send_byte(uint8_t b)
 { 
 	return TinyI2C.write(b);
 }
 
-// Stop communication
-void dsendstop()
+static void ssd1306_send_stop()
 { 
 	TinyI2C.stop();
 }
 
-// Start data transfer
-void dsenddatastart()
+static void ssd1306_command_start()
 { 
-	dsendstart();
-	dsendbyte(DISPLAY_DATA);
+	ssd1306_send_start();
+	ssd1306_send_byte(DISPLAY_COMMAND);
 }
 
-// Send data byte
-void dsenddatabyte(uint8_t b)
+static void ssd1306_data_start()
 { 
-	if (!dsendbyte(b))
+	ssd1306_send_start();
+	ssd1306_send_byte(DISPLAY_DATA);
+}
+
+static void ssd1306_send_command(uint8_t cmd)
+{ 
+	ssd1306_command_start();
+	ssd1306_send_byte(cmd);
+	ssd1306_send_stop();
+}
+
+static void ssd1306_send_data(uint8_t b)
+{ 
+	if (!ssd1306_send_byte(b))
 	{
-		dsendstop();
-		dsenddatastart();
-		dsendbyte(b);
+		ssd1306_send_stop();
+		ssd1306_data_start();
+		ssd1306_send_byte(b);
 	}
 }
 
-// Start command transfer
-void dsendcmdstart()
-{ 
-	dsendstart();
-	dsendbyte(DISPLAY_COMMAND);
-}
+////////////////////////////////////////////////////////////////////////////////
 
-// Send command
-void dsendcmd(uint8_t cmd)
-{ 
-	dsendcmdstart();
-	dsendbyte(cmd);
-	dsendstop();
-}
-
-// Render current half of GDDRAM to oled display
-void drender()
+static void DisplayInit()
 {
-	renderram ^= 0x04;
+	ssd1306_command_start();
+	for (uint8_t i = 0; i < sizeof(inits); i++)
+	{
+		ssd1306_send_byte(pgm_read_byte(&inits[i]));
+	}
+	ssd1306_send_stop();
 }
 
-// Swap GDDRAM to other half and render
-void dswap()
+static void DisplayTurnOn()
+{
+	ssd1306_send_command(0xAF);
+}
+
+static void DisplayTurnOff()
+{ 
+	ssd1306_send_command(0xAE);
+}
+
+static void DisplayBrightness(uint8_t brightness)
+{ 
+	ssd1306_command_start();
+	ssd1306_send_byte(0x81);
+	ssd1306_send_byte(brightness);
+	ssd1306_send_stop();
+}
+
+static void DisplayPosition(uint8_t x, uint8_t y)
+{ 
+	dx = x;	dy = y;
+	ssd1306_command_start();
+	ssd1306_send_byte(renderram | (y & 0x07));
+	ssd1306_send_byte(0x10 | (x >> 4));
+	ssd1306_send_byte(x & 0x0f);
+	ssd1306_send_stop();
+}
+
+static void DisplayWrite(uint8_t b, uint8_t s)
+{
+	ssd1306_data_start();
+	while (s--) ssd1306_send_data(b);
+	ssd1306_send_stop();
+}
+
+static void DisplayFill(uint8_t b)
+{
+	DisplayPosition(0, 0);
+	for (uint8_t i = DISPLAY_PAGES; i > 0; --i)
+	{
+		DisplayWrite(b, DISPLAY_WIDTH);
+	}
+}
+
+static void DisplayRefresh()
 {
 	drawram ^= 0x20;
-	dsendcmd(drawram);
-	drender();
-}
-
-// Run initialization sequence
-void dinit()
-{
-	dbegin();
-	dsendstart();
-	dsendbyte(DISPLAY_COMMAND);
-	for (uint8_t i = 0; i < sizeof(inits); i++)
-		dsendbyte(pgm_read_byte(&inits[i]));
-	dsendstop();
-}
-
-// Display on
-void don()
-{
-	dsendcmd(0xAF);
-}
-
-// Display off
-void doff()
-{ 
-	dsendcmd(0xAE);
-}
-
-// Set contrast
-void dcontrast(uint8_t contrast)
-{ 
-	dsendcmdstart();
-	dsendbyte(0x81);
-	dsendbyte(contrast);
-	dsendstop();
-}
-
-// Set cursor to position (x|y)
-void dsetcursor(uint8_t x, uint8_t y)
-{ 
-	dx = x;
-	dy = y;
-	dsendcmdstart();
-	dsendbyte(renderram | (y & 0x07));
-	dsendbyte(0x10 | (x >> 4));
-	dsendbyte(x & 0x0f);
-	dsendstop();
-}
-
-// Fill screen with byte/pattern b
-void dfill(uint8_t b)
-{
-	dsetcursor(0, 0);
-	dsenddatastart();
-	for (int i = 0; i < SCREENWIDTH * DISPLAY_PAGES; i++)
-		dsenddatabyte(b);
-	dsendstop();
+	ssd1306_send_command(drawram);
+	renderram ^= 0x04;
 }

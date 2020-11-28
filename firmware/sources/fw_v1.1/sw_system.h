@@ -44,7 +44,7 @@ void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 	uint8_t tx = dx;
 	for (uint8_t k = 0; k < h; k++)
 	{
-		if (k > 0) dsetcursor(dx = tx, ++dy);
+		if (k > 0) DisplayPosition(dx = tx, ++dy);
 
 		for (uint8_t j = 0; j < FONT_WIDTH; j++)
 		{
@@ -53,23 +53,20 @@ void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 				bitmap = expand4bit((bitmap >> (k * 4)) & 0x0f); // Expand 0000abcd
 			else if (h == CHAR_SIZE_L)
 				bitmap = expand2bit((bitmap >> (k * 2)) & 0x03); // Expand 000000ab
-
-			dsenddatastart();
-			for (uint8_t i = 0; i < w; i++) dsenddatabyte(bitmap);
-			dsendstop();
+			DisplayWrite(bitmap, w);
 		}
 	}
 }
 
 void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
-	dsetcursor(x, y);
+	DisplayPosition(x, y);
 	PrintChar(c, w, h);
 }
 
 void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
-	dsetcursor(x, y);
+	DisplayPosition(x, y);
 	const char* ptr = (const char*)s;
 	uint8_t ww = FONT_WIDTH * w + 1;
 	while(uint8_t ch = pgm_read_byte(ptr++))
@@ -77,18 +74,6 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x
 		PrintCharAt(ch, w, h, x, y);
 		x += ww;
 	}
-}
-
-// Clear screen
-void cls()
-{
-	dfill(0x00);
-}
-
-// Swap GDDRAM and render
-void display()
-{ 
-	dswap();
 }
 
 // Calculate frameduration
@@ -115,12 +100,12 @@ void execsleep()
 // Goto deep sleep mode
 void sleep()
 {
-	doff();
+	DisplayTurnOff();
 	delayshort(200); // Prevent instant wakeup
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 	power_all_disable(); // Power off ADC, timer 0 and 1
 	execsleep();
-	don();
+	DisplayTurnOn();
 }
 
 // Idle, while waiting for next frame
