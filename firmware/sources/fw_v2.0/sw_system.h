@@ -167,73 +167,101 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define FRAMERATE 10
+#define WDT_MODE_DISABLED  0x00
+#define WDT_MODE_RES       0x08 // To reset the CPU if there is a timeout
+#define WDT_MODE_INT       0x40 // Timeout will cause an interrupt
+#define WDT_MODE_INT_RES   0x48 // First time-out interrupt , the second time out - reset
 
-static uint8_t eachframemillis, thisframestart, lastframedurationms;
+#define WDT_TIMEOUT_16MS   0x00 // (16 ± 1.6) ms
+#define WDT_TIMEOUT_32MS   0x01 // (32 ± 3.2) ms
+#define WDT_TIMEOUT_64MS   0x02 // (64 ± 6.4) ms
+#define WDT_TIMEOUT_125MS  0x03 // (128 ± 12.8) ms
+#define WDT_TIMEOUT_250MS  0x04 // (256 ± 25.6) ms
+#define WDT_TIMEOUT_500MS  0x05 // (512 ± 51.2) ms
+#define WDT_TIMEOUT_1S     0x06 // (1024 ± 102.4) ms
+#define WDT_TIMEOUT_2S     0x07 // (2048 ± 204.8) ms
+#define WDT_TIMEOUT_4S     0x08 // (4096 ± 409.6) ms
+#define WDT_TIMEOUT_8S     0x09 // (8192 ± 819.2) ms
 
-static uint8_t justrendered;
+static volatile uint8_t  isWaitingForNextFrame;
+static volatile uint16_t frameCounter;
 
-void delayshort(uint8_t ms)
+static void WDTInit(uint8_t mode, uint8_t prescaler)
 {
-	long t = millis();
-	while ((uint8_t)(millis() - t) < ms);
+	uint8_t wdtr = mode | ((prescaler > 7) ? 0x20 | (prescaler - 8) : prescaler);
+	uint8_t sreg = SREG;
+
+	cli();
+	WDTCR = ((1 << WDCE) | (1 << WDE));
+	WDTCR = wdtr;
+	SREG  = sreg;
 }
 
-void setframerate(uint8_t rate)
-{ 
-	eachframemillis = 1000 / rate;
+ISR(WDT_vect)
+{
+	isWaitingForNextFrame = false;
+	frameCounter++;
 }
 
 ISR(PCINT0_vect)
-{ 
+{
+	// do nothing
+	// just interrupt sleeping
 }
 
-// Execute sleep mode
-void execsleep()
-{ 
+static void ResetFrameCounter()
+{
+	frameCounter = 0;
+}
+
+static void EnableFrameSync()
+{
+	// frame rate is about 15 FPS
+	WDTInit(WDT_MODE_INT, WDT_TIMEOUT_64MS);
+	ResetFrameCounter();
+	sei();
+}
+
+static void DisableFrameSync()
+{
+	WDTInit(WDT_MODE_DISABLED, 0);
+	sei();
+}
+
+static void execute_sleep(uint8_t mode)
+{ 	
+	power_all_disable();
+	set_sleep_mode(mode);
 	sleep_enable();
 	sleep_cpu();
+
+	// sleeping here...
+
 	sleep_disable();
-	power_all_enable();
-	power_timer1_disable(); // Never using timer1
+	power_usi_enable(); // Power On USI for I2C communication
+	power_adc_enable(); // Power On ADC for analog keyboard reading
 }
 
-// Goto deep sleep mode
-void sleep()
+static void DeepSleep()
 {
+	_delay_ms(250);
+
 	DisplayTurnOff();
-	delayshort(200); // Prevent instant wakeup
-	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-	power_all_disable(); // Power off ADC, timer 0 and 1
-	execsleep();
+	DisableFrameSync();
+	
+	execute_sleep(SLEEP_MODE_PWR_DOWN);
+
+	EnableFrameSync();
 	DisplayTurnOn();
 }
 
-// Idle, while waiting for next frame
-void idle()
+static void IdleSleep()
 { 
-	set_sleep_mode(SLEEP_MODE_IDLE);
-	power_adc_disable(); // Disable ADC (do not disable timer0; timer1 is disabled from last idle)
-	execsleep();
+	execute_sleep(SLEEP_MODE_IDLE);
 }
 
-// Wait (idle) for next frame
-static uint8_t nextframe()
+static void WaitForNextFrame()
 {
-	uint8_t now = (uint8_t)millis(), framedurationms = now - thisframestart;
-	if (justrendered)
-	{
-		lastframedurationms = framedurationms;
-		justrendered = false;
-		return false;
-	}
-	else if (framedurationms < eachframemillis)
-	{
-		if (++framedurationms < eachframemillis)
-			idle();
-		return false;
-	}
-	justrendered = true;
-	thisframestart = now;
-	return true;
+	isWaitingForNextFrame = true;
+	while (isWaitingForNextFrame) IdleSleep();
 }

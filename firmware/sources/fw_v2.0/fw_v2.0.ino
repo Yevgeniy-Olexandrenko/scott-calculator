@@ -730,13 +730,17 @@
       2.067834E-15  _Po Magnetic flux quantum
 */
 
-#include <avr/power.h> // Needed for power management
-#include <avr/sleep.h> // Needed for sleeping
-#include <EEPROM.h>    // For saving data to EEPROM
-#include <math.h>
+#undef  F_CPU
+#define F_CPU 16000000UL // 16 MHz
 
-#undef FPSTR
-#undef F
+#include <avr/power.h>   // Needed for power management
+#include <avr/sleep.h>   // Needed for sleeping
+#include <util/delay.h>  // Needed for delays
+#include <EEPROM.h>      // Needed for saving data to EEPROM
+#include <math.h>		 // Needed for some math constants
+
+#undef  FPSTR
+#undef  F
 class __FlashStringHelper;
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
 #define F(string_literal) (FPSTR(PSTR(string_literal)))

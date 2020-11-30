@@ -1,28 +1,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
-#define CHARSPACE ':'	  // Character for space symbol
-#define CHARSHIFT '='	  // Character for shift symbol
-#define CHARREC '@'		  // Character for recording symbol
+#define CHARSPACE ':'	    // Character for space symbol
+#define CHARSHIFT '='	    // Character for shift symbol
+#define CHARREC   '@'       // Character for recording symbol
 
-#define POWEROFFTIME 30	  // Time for auto poweroff in s
-#define DIMTIME 10		  // Time for auto displaydim in s
-#define STACK_SIZE 5		  // Size of floatstack
-#define TINYNUMBER 1e-7	  // Number for rounding to 0
-#define MAXITERATE 100	  // Maximal number of Taylor series loops to iterate
-#define FKEYNR 3		  // 3 function keys
-#define KEY_DUMMY 0xff	  // Needed to enter key-loop and printstring
+#define DIMOUT_FRAMES 156   // Frames before display dim out (about 10 sec)
+#define POWEROFF_FRAMES 469 // Frames before power off (about 30 sec)
 
-#define EECONTRAST 0	  // EEPROM address of brightness (1 byte)
-#define EESTACK 1		  // EEPROM address of stack ((4+1)*4 bytes) (not used now!!!)
-#define EECMDKEY 21		  // EEPROM address of command keys (10 bytes)
-#define EECONST 31		  // EEPROM address of constants (10*4 bytes)
-#define EEREC 71		  // EEPROM address Starting EE-address for saving "type recorder"
-#define MAXREC 146		  // Number of record steps per slot
-#define MAXRECSLOT 3	  // Maximal slots to record
+#define STACK_SIZE 5		// Size of floatstack
+#define TINYNUMBER 1e-7	    // Number for rounding to 0
+#define MAXITERATE 100	    // Maximal number of Taylor series loops to iterate
+#define FKEYNR 3		    // 3 function keys
+#define KEY_DUMMY 0xff	    // Needed to enter key-loop and printstring
 
-#define BITEXP 1		  // Bit for exp()
-#define BITSIN 2		  // Bit for sin()
-#define BITASIN 4		  // Bit for asin
+#define EECONTRAST 0	    // EEPROM address of brightness (1 byte)
+#define EESTACK 1		    // EEPROM address of stack ((4+1)*4 bytes) (not used now!!!)
+#define EECMDKEY 21		    // EEPROM address of command keys (10 bytes)
+#define EECONST 31		    // EEPROM address of constants (10*4 bytes)
+#define EEREC 71		    // EEPROM address Starting EE-address for saving "type recorder"
+#define MAXREC 146		    // Number of record steps per slot
+#define MAXRECSLOT 3	    // Maximal slots to record
+
+#define BITEXP 1		    // Bit for exp()
+#define BITSIN 2		    // Bit for sin()
+#define BITASIN 4		    // Bit for asin
 
 #define _min(a,b) ((a) < (b) ? (a) : (b))
 #define _max(a,b) ((a) > (b) ? (a) : (b))
@@ -48,7 +49,6 @@ static uint8_t select = 0;                         // Selection number or playst
 static uint8_t isPlayString = false;               // True if string should be played
 static uint8_t brightness;                         // Contrast
 static uint8_t isfirstrun = true;                  // Allows first run of loop and printscreen without key query
-static uint32_t timestamp = 0;                      // Needed for timing of power manangement
 static uint16_t recptr = 0;                         // Pointer to recording step
 static uint8_t recslot = 0;                        // Slot number for recording to EEPROM
 static uint8_t isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
@@ -251,8 +251,8 @@ void PlayString(uint8_t slot)
 void ReadBattery()
 {
 	// Set voltage bits for ATTINY85
-	ADMUX = _BV(MUX3) | _BV(MUX2); 
-	delayshort(10);
+	ADMUX = _BV(MUX3) | _BV(MUX2);
+	_delay_ms(10);
 
 	 // Measuring
 	ADCSRA |= _BV(ADSC);
@@ -266,7 +266,7 @@ void ReadBattery()
 
 void PowerOff()
 {
-	sleep();
+	DeepSleep();
 	// TODO
 }
 
@@ -856,8 +856,9 @@ void setup()
 	GIMSK |= bit(PCIE);	  // Enable pin change interrupts
 
 	// INIT SYSTEM
-	setframerate(FRAMERATE);
+	DisplayTurnOn();
 	DisplayBrightness(brightness = EEPROM[EECONTRAST]);
+	EnableFrameSync();
 
 	// START
 	ResetStack();
@@ -867,7 +868,7 @@ void setup()
 
 void loop()
 {
-	if (!(nextframe())) return;
+	WaitForNextFrame(); 
 
 	if (isfirstrun)
 	{
@@ -882,17 +883,15 @@ void loop()
 
 	if (key)
 	{
-		timestamp = millis();
+		ResetFrameCounter();
 		DisplayBrightness(brightness);
-		DisplayTurnOn();
 	}
 
-	uint8_t elapsedTime = (millis() - timestamp) / 1000L;
-	if (elapsedTime > POWEROFFTIME)
+	if (frameCounter > POWEROFF_FRAMES)
 	{
 		PowerOff();
 	}
-	else if (elapsedTime > DIMTIME)
+	else if(frameCounter > DIMOUT_FRAMES)
 	{
 		DisplayBrightness(0x00);
 	}
