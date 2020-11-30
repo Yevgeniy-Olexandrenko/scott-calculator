@@ -264,12 +264,11 @@ void ReadBattery()
 	stack[0] = 1125.3f / ((high << 8) | ADCL);
 }
 
-void PowerOff()
+static void PowerOff()
 {
-	DeepSleep();
-	// TODO
+	// simulate automatic Power Off
+	frameCounter = POWEROFF_FRAMES;
 }
-
 
 void X_Is_X_Add_Y()
 {
@@ -884,17 +883,15 @@ void loop()
 	if (key)
 	{
 		ResetFrameCounter();
-		DisplayBrightness(brightness);
 	}
 
-	if (frameCounter > POWEROFF_FRAMES)
+	if (frameCounter >= POWEROFF_FRAMES)
 	{
-		PowerOff();
+		DeepSleep();
+		oldkey = getkeycode();
 	}
-	else if(frameCounter > DIMOUT_FRAMES)
-	{
-		DisplayBrightness(0x00);
-	}
+
+	DisplayBrightness(frameCounter < DIMOUT_FRAMES ? brightness : 0);
 
 	if (isPlayString)
 	{ // ### Play string

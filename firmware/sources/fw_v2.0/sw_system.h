@@ -188,9 +188,9 @@ static volatile uint16_t frameCounter;
 
 static void WDTInit(uint8_t mode, uint8_t prescaler)
 {
+	// does not change global interrupts enable flag
 	uint8_t wdtr = mode | ((prescaler > 7) ? 0x20 | (prescaler - 8) : prescaler);
 	uint8_t sreg = SREG;
-
 	cli();
 	WDTCR = ((1 << WDCE) | (1 << WDE));
 	WDTCR = wdtr;
@@ -219,13 +219,11 @@ static void EnableFrameSync()
 	// frame rate is about 15 FPS
 	WDTInit(WDT_MODE_INT, WDT_TIMEOUT_64MS);
 	ResetFrameCounter();
-	sei();
 }
 
 static void DisableFrameSync()
 {
 	WDTInit(WDT_MODE_DISABLED, 0);
-	sei();
 }
 
 static void execute_sleep(uint8_t mode)
