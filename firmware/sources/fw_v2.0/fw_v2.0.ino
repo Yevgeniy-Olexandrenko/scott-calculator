@@ -750,9 +750,10 @@ class __FlashStringHelper;
 #define isb_set(sfr, bit) ((sfr) & _BV(bit))
 #define isb_clr(sfr, bit) (!((sfr) & _BV(bit)))
 
+#include "hw_system.h"
+#include "hw_keyboard.h"
 #include "hw_usi_i2c.h"
 #include "hw_display.h"
 #include "hw_clock.h"
-#include "hw_keyboard.h"
 #include "sw_system.h"
 #include "sw_calculator.h"

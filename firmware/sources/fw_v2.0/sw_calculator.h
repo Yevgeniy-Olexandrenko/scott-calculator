@@ -173,8 +173,9 @@ char playbuf[40]; // Holds sii[]
 
 
 
-void ResetStack()
+void ResetCalculator()
 {
+	brightness = EEPROM[EECONTRAST];
 	for (uint8_t i = 0; i < STACK_SIZE; i++) stack[i] = 0.f;
 }
 
@@ -248,20 +249,11 @@ void PlayString(uint8_t slot)
 	ispushed = isdot = false;
 }
 
-void ReadBattery()
+static void ReadBattery()
 {
-	// Set voltage bits for ATTINY85
-	ADMUX = _BV(MUX3) | _BV(MUX2);
-	_delay_ms(10);
-
-	 // Measuring
-	ADCSRA |= _BV(ADSC);
-	while (bit_is_set(ADCSRA, ADSC));
-	
-	// Calculate Vcc in V - 1125.3 = 1.1 * 1023
 	StackPush();
-	uint8_t high = ADCH;
-	stack[0] = 1125.3f / ((high << 8) | ADCL);
+	uint16_t adc = ADCRead(_BV(MUX3) | _BV(MUX2), 10);
+	stack[0] = 1125.3f / adc;
 }
 
 static void PowerOff()
@@ -840,17 +832,15 @@ void PrintScreen()
 
 int main() 
 {
-	init();
-
+	sei();
+	ADCInit();
 	I2CBusInit();
 	DisplayInit();
 	KeyboardInit();
 
 	DisplayTurnOn();
 	EnableFrameSync();
-
-	brightness = EEPROM[EECONTRAST];
-	ResetStack();
+	ResetCalculator();
 
 	for (;;)
 	{

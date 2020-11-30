@@ -1,4 +1,7 @@
+////////////////////////////////////////////////////////////////////////////////
+
 #define KEYBOARD_PIN PORTB3
+#define KEYBOARD_ADC (_BV(MUX1) | _BV(MUX0))
 
 // Keyboard layout on PCB:
 // A0[?] B0[7] C0[8] D0[9]
@@ -25,19 +28,19 @@
 #define KEY_A0_F '?' // SHIFT   
 
 // Keyboard ordered by voltage level:
-const uint8_t key_code[] PROGMEM = 
-{
-	KEY_D3_P, KEY_C3_D, KEY_B3_0, KEY_A3_C,
-	KEY_D2_3, KEY_C2_2, KEY_B2_1, KEY_A2_S,
-	KEY_D1_6, KEY_C1_5, KEY_B1_4, KEY_A1_E,
-	KEY_D0_9, KEY_C0_8, KEY_B0_7, KEY_A0_F 
-};
-const uint16_t key_adc[] PROGMEM =
+static const uint16_t key_adc[] PROGMEM =
 {
 	465, 483, 502, 524,
 	547, 573, 601, 630,
 	665, 704, 744, 792,
 	846, 909, 978, 1024
+};
+static const uint8_t key_code[] PROGMEM = 
+{
+	KEY_D3_P, KEY_C3_D, KEY_B3_0, KEY_A3_C,
+	KEY_D2_3, KEY_C2_2, KEY_B2_1, KEY_A2_S,
+	KEY_D1_6, KEY_C1_5, KEY_B1_4, KEY_A1_E,
+	KEY_D0_9, KEY_C0_8, KEY_B0_7, KEY_A0_F 
 };
 
 static void KeyboardInit()
@@ -51,7 +54,7 @@ static void KeyboardInit()
 
 static uint8_t KeyboardRead()
 {
-	uint16_t adcVal = analogRead(KEYBOARD_PIN);
+	uint16_t adcVal = ADCRead(KEYBOARD_ADC, 1);
 	if (adcVal > 450)
 	{
 		for (uint8_t i = 0; i < 16; ++i)
@@ -61,4 +64,10 @@ static uint8_t KeyboardRead()
 		}
 	}
 	return NULL;
+}
+
+ISR(PCINT0_vect)
+{
+	// do nothing
+	// just interrupt sleeping
 }
