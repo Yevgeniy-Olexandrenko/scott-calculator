@@ -1,27 +1,25 @@
+////////////////////////////////////////////////////////////////////////////////
+
 #define DISPLAY_ADDRESS 0x3C
 #define DISPLAY_COMMAND 0x00
 #define DISPLAY_DATA    0x40
 #define DISPLAY_WIDTH   128 
 #define DISPLAY_PAGES   4
 
-// Display cursor coordinates
 static uint8_t dx = 0, dy = 0;
-
-// Masks to address GDDRAM of display
 static uint8_t renderram = 0xB4, drawram = 0x40;
 
-// Initialization sequence
-static const uint8_t inits[] PROGMEM =
+static const uint8_t ssd1306_init_sequence[] PROGMEM =
 {
-	0xC8,		// Set scan direction (C0 scan from COM0 to COM[N-1] or C8 mirroring)
-	0xA1,		// Set segment remap (A0 regular or A1 flip)
+	0xC8,       // Set scan direction (C0 scan from COM0 to COM[N-1] or C8 mirroring)
+	0xA1,       // Set segment remap (A0 regular or A1 flip)
 	0xA8, 0x1F, // Set mux ratio (N+1) where: 14<N<64 ... 3F or 1F
 	0xDA, 0x02, // COM config pin mapping:
-				//					right/left left/right
-				//		sequential      02        22
-				//		alternate       12        32
+	            //                  right/left left/right
+	            //      sequential      02        22
+	            //      alternate       12        32
 	0x20, 0x00, // Horizontal addressing mode (line feed after EOL)
-	0x8D, 0x14	// Charge pump (0x14 enable or 0x10 disable)
+	0x8D, 0x14 // Charge pump (0x14 enable or 0x10 disable)
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,9 +73,9 @@ static void ssd1306_send_data(uint8_t b)
 static void DisplayInit()
 {
 	ssd1306_command_start();
-	for (uint8_t i = 0; i < sizeof(inits); i++)
+	for (uint8_t i = 0; i < sizeof(ssd1306_init_sequence); i++)
 	{
-		ssd1306_send_byte(pgm_read_byte(&inits[i]));
+		ssd1306_send_byte(pgm_read_byte(&ssd1306_init_sequence[i]));
 	}
 	ssd1306_send_stop();
 }

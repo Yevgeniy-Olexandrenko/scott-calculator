@@ -1,6 +1,3 @@
-static void DisplayTurnOn();
-static void DisplayTurnOff();
-
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ADCInit()
@@ -37,10 +34,7 @@ static uint16_t ADCRead(uint8_t channel, uint8_t delay)
 #define WDT_TIMEOUT_4S     0x08 // (4096 ± 409.6) ms
 #define WDT_TIMEOUT_8S     0x09 // (8192 ± 819.2) ms
 
-static volatile uint8_t  isWaitingForNextFrame;
-static volatile uint16_t frameCounter;
-
-static void wdt_init(uint8_t mode, uint8_t prescaler)
+static void WDTInit(uint8_t mode, uint8_t prescaler)
 {
 	// does not change global interrupts enable flag
 	uint8_t wdtr = mode | ((prescaler > 7) ? 0x20 | (prescaler - 8) : prescaler);
@@ -51,32 +45,9 @@ static void wdt_init(uint8_t mode, uint8_t prescaler)
 	SREG  = sreg;
 }
 
-ISR(WDT_vect)
-{
-	isWaitingForNextFrame = false;
-	frameCounter++;
-}
-
-static void ResetFrameCounter()
-{
-	frameCounter = 0;
-}
-
-static void EnableFrameSync()
-{
-	// frame rate is about 15 FPS
-	wdt_init(WDT_MODE_INT, WDT_TIMEOUT_64MS);
-	ResetFrameCounter();
-}
-
-static void DisableFrameSync()
-{
-	wdt_init(WDT_MODE_DISABLED, 0);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
-static void execute_sleep(uint8_t mode)
+static void ExecuteSleep(uint8_t mode)
 { 	
 	power_all_disable();
 	set_sleep_mode(mode);
@@ -88,30 +59,4 @@ static void execute_sleep(uint8_t mode)
 	sleep_disable();
 	power_usi_enable(); // Power On USI for I2C communication
 	power_adc_enable(); // Power On ADC for analog keyboard reading
-}
-
-static void DeepSleep()
-{
-	_delay_ms(250);
-
-	DisplayTurnOff();
-	DisableFrameSync();
-	
-	execute_sleep(SLEEP_MODE_PWR_DOWN);
-
-	EnableFrameSync();
-	DisplayTurnOn();
-}
-
-static void IdleSleep()
-{ 
-	execute_sleep(SLEEP_MODE_IDLE);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void WaitForNextFrame()
-{
-	isWaitingForNextFrame = true;
-	while (isWaitingForNextFrame) IdleSleep();
 }

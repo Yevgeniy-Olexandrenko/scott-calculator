@@ -164,3 +164,50 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x
 		x += ww;
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+static volatile uint8_t  frameWaiting;
+static volatile uint16_t frameCounter;
+
+static void ResetFrameCounter()
+{
+	frameCounter = 0;
+}
+
+static void EnableFrameSync()
+{
+	// frame rate is about 15 FPS
+	WDTInit(WDT_MODE_INT, WDT_TIMEOUT_64MS);
+	ResetFrameCounter();
+}
+
+static void DisableFrameSync()
+{
+	WDTInit(WDT_MODE_DISABLED, 0);
+}
+
+static void WaitForNextFrame()
+{
+	frameWaiting = true;
+	while (frameWaiting) ExecuteSleep(SLEEP_MODE_IDLE);
+}
+
+ISR(WDT_vect)
+{
+	frameWaiting = false;
+	frameCounter++;
+}
+
+static void DeepSleep()
+{
+	_delay_ms(250);
+
+	DisplayTurnOff();
+	DisableFrameSync();
+	
+	ExecuteSleep(SLEEP_MODE_PWR_DOWN);
+
+	EnableFrameSync();
+	DisplayTurnOn();
+}

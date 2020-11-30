@@ -737,7 +737,7 @@
 #include <avr/sleep.h>   // Needed for sleeping
 #include <util/delay.h>  // Needed for delays
 #include <EEPROM.h>      // Needed for saving data to EEPROM
-#include <math.h>		 // Needed for some math constants
+#include <math.h>        // Needed for some math constants
 
 #undef  FPSTR
 #undef  F
