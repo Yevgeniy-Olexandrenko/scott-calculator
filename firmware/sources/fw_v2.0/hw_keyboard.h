@@ -1,4 +1,4 @@
-#define KPIN 3
+#define KEYBOARD_PIN PORTB3
 
 // Keyboard layout on PCB:
 // A0[?] B0[7] C0[8] D0[9]
@@ -40,9 +40,18 @@ const uint16_t key_adc[] PROGMEM =
 	846, 909, 978, 1024
 };
 
-static uint8_t getkeycode()
+static void KeyboardInit()
 {
-	uint16_t adcVal = analogRead(KPIN);
+	clr_bit(DDRB,  KEYBOARD_PIN);
+	clr_bit(PORTB, KEYBOARD_PIN);
+	set_bit(PCMSK, KEYBOARD_PIN);
+	set_bit(GIFR,  PCIF);
+	set_bit(GIMSK, PCIE);
+}
+
+static uint8_t KeyboardRead()
+{
+	uint16_t adcVal = analogRead(KEYBOARD_PIN);
 	if (adcVal > 450)
 	{
 		for (uint8_t i = 0; i < 16; ++i)

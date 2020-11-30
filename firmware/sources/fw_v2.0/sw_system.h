@@ -106,9 +106,9 @@ const uint8_t font[] PROGMEM =
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define CHAR_SIZE_S 0x01
-#define CHAR_SIZE_M 0x02
-#define CHAR_SIZE_L 0x04
+#define CHAR_SIZE_S 1
+#define CHAR_SIZE_M 2
+#define CHAR_SIZE_L 4
 
 static uint8_t printbitshift = 0;
 
@@ -186,7 +186,7 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x
 static volatile uint8_t  isWaitingForNextFrame;
 static volatile uint16_t frameCounter;
 
-static void WDTInit(uint8_t mode, uint8_t prescaler)
+static void wdt_init(uint8_t mode, uint8_t prescaler)
 {
 	// does not change global interrupts enable flag
 	uint8_t wdtr = mode | ((prescaler > 7) ? 0x20 | (prescaler - 8) : prescaler);
@@ -217,13 +217,13 @@ static void ResetFrameCounter()
 static void EnableFrameSync()
 {
 	// frame rate is about 15 FPS
-	WDTInit(WDT_MODE_INT, WDT_TIMEOUT_64MS);
+	wdt_init(WDT_MODE_INT, WDT_TIMEOUT_64MS);
 	ResetFrameCounter();
 }
 
 static void DisableFrameSync()
 {
-	WDTInit(WDT_MODE_DISABLED, 0);
+	wdt_init(WDT_MODE_DISABLED, 0);
 }
 
 static void execute_sleep(uint8_t mode)

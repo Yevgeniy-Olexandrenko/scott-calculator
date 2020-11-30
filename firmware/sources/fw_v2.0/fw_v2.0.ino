@@ -745,6 +745,11 @@ class __FlashStringHelper;
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
 #define F(string_literal) (FPSTR(PSTR(string_literal)))
 
+#define set_bit(sfr, bit) ((sfr) |= _BV(bit))
+#define clr_bit(sfr, bit) ((sfr) &= ~_BV(bit))
+#define isb_set(sfr, bit) ((sfr) & _BV(bit))
+#define isb_clr(sfr, bit) (!((sfr) & _BV(bit)))
+
 #include "hw_usi_i2c.h"
 #include "hw_display.h"
 #include "hw_clock.h"

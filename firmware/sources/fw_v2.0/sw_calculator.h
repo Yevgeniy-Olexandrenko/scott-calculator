@@ -838,151 +838,145 @@ void PrintScreen()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void setup()
+int main() 
 {
+	init();
+
 	I2CBusInit();
 	DisplayInit();
+	KeyboardInit();
 
-	// INIT WAKEUP (with pin change interrupt) ... same pin as keyboard!
-	pinMode(KPIN, INPUT); // Wakeup pin
-	PCMSK |= bit(KPIN);	  // want pin D3 / H2
-	GIFR  |= bit(PCIF);	  // Clear any outstanding interrupts
-	GIMSK |= bit(PCIE);	  // Enable pin change interrupts
-
-	// INIT SYSTEM
 	DisplayTurnOn();
-	DisplayBrightness(brightness = EEPROM[EECONTRAST]);
 	EnableFrameSync();
 
-	// START
+	brightness = EEPROM[EECONTRAST];
 	ResetStack();
-}
 
-////////////////////////////////////////////////////////////////////////////////
-
-void loop()
-{
-	WaitForNextFrame(); 
-
-	if (isfirstrun)
+	for (;;)
 	{
-		isfirstrun = false;
-		key = KEY_DUMMY;
-	}
-	else
-	{
-		key = getkeycode();
-		if (key == oldkey) key = NULL; else oldkey = key;
-	}
+		WaitForNextFrame(); 
 
-	if (key)
-	{
-		ResetFrameCounter();
-	}
-
-	if (frameCounter >= POWEROFF_FRAMES)
-	{
-		DeepSleep();
-		oldkey = getkeycode();
-	}
-
-	DisplayBrightness(frameCounter < DIMOUT_FRAMES ? brightness : 0);
-
-	if (isPlayString)
-	{ // ### Play string
-		key = playbuf[select];
-		if (key == NULL)
-		{						  // Stop playstring
-			LoadStackFromShadowBuffer(restore); // Restore upper part of stack
-			isPlayString = false;
-			isNewNumber = true;
+		if (isfirstrun)
+		{
+			isfirstrun = false;
 			key = KEY_DUMMY;
 		}
 		else
-		{ // Go on for dispatching
-			if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
-			{ // New number (0-9,.)
-				isNewNumber = true;
-				ispushed = false;
-			}
-			select++;
+		{
+			key = KeyboardRead();
+			if (key == oldkey) key = NULL; else oldkey = key;
 		}
-	}
 
-	else if (isrec || isplay)
-	{ // ### Type recorder (else: playstring works inside play)
-		uint16_t maxptr = EEREC + (recslot + 1) * MAXREC;
-		if (isrec)
-		{ // Record keys and write to EEPPROM
-			if (key && recptr < maxptr)
-				EEPROM[recptr++] = key;
+		if (key)
+		{
+			ResetFrameCounter();
 		}
-		else
-		{ // Read/play key from EEPROM
-			if (key == KEY_A3_C)
-			{ // Stop execution
-				isplay = false;
+
+		if (frameCounter >= POWEROFF_FRAMES)
+		{
+			DeepSleep();
+			oldkey = KeyboardRead();
+		}
+
+		DisplayBrightness(frameCounter < DIMOUT_FRAMES ? brightness : 0);
+
+		if (isPlayString)
+		{ // ### Play string
+			key = playbuf[select];
+			if (key == NULL)
+			{						  // Stop playstring
+				LoadStackFromShadowBuffer(restore); // Restore upper part of stack
+				isPlayString = false;
+				isNewNumber = true;
 				key = KEY_DUMMY;
 			}
-			key = EEPROM[recptr++];
+			else
+			{ // Go on for dispatching
+				if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
+				{ // New number (0-9,.)
+					isNewNumber = true;
+					ispushed = false;
+				}
+				select++;
+			}
 		}
-		if (key == KEY_A3_C || recptr >= maxptr)
+
+		else if (isrec || isplay)
+		{ // ### Type recorder (else: playstring works inside play)
+			uint16_t maxptr = EEREC + (recslot + 1) * MAXREC;
+			if (isrec)
+			{ // Record keys and write to EEPPROM
+				if (key && recptr < maxptr)
+					EEPROM[recptr++] = key;
+			}
+			else
+			{ // Read/play key from EEPROM
+				if (key == KEY_A3_C)
+				{ // Stop execution
+					isplay = false;
+					key = KEY_DUMMY;
+				}
+				key = EEPROM[recptr++];
+			}
+			if (key == KEY_A3_C || recptr >= maxptr)
+			{
+				isplay = isrec = false;
+				key = KEY_DUMMY;
+			}
+		}
+
+		if (key == KEY_A0_F)
 		{
-			isplay = isrec = false;
+			isShift ^= true;
 			key = KEY_DUMMY;
 		}
-	}
 
-	if (key == KEY_A0_F)
-	{
-		isShift ^= true;
-		key = KEY_DUMMY;
-	}
-
-	if (key)
-	{
-		isShowStack = false;
-		if (key != KEY_DUMMY)
+		if (key)
 		{
-			if (isMenu)
+			isShowStack = false;
+			if (key != KEY_DUMMY)
 			{
-				uint8_t limit = numberofcommands / FKEYNR - 1;
-				if (key == KEY_A1_E)
+				if (isMenu)
 				{
-					if (select > 0) select--; else select = limit;
+					uint8_t limit = numberofcommands / FKEYNR - 1;
+					if (key == KEY_A1_E)
+					{
+						if (select > 0) select--; else select = limit;
+					}
+					else if (key == KEY_A2_S)
+					{
+						if (select < limit) select++; else select = 0;
+					}
+					else if (key == KEY_A3_C)
+					{
+						isMenu = false;
+					}
+					else if (key >= KEY_B2_1 && key <= KEY_D2_3)
+					{
+						uint8_t index = select * FKEYNR + (key - KEY_B2_1);
+						(*dispatch[22 + index])();
+						isNewNumber = true;
+						isMenu = false;
+					}
 				}
-				else if (key == KEY_A2_S)
+
+				else if (isShift)
 				{
-					if (select < limit) select++; else select = 0;
-				}
-				else if (key == KEY_A3_C)
-				{
-					isMenu = false;
-				}
-				else if (key >= KEY_B2_1 && key <= KEY_D2_3)
-				{
-					uint8_t index = select * FKEYNR + (key - KEY_B2_1);
-					(*dispatch[22 + index])();
+					(*dispatch[6 + key - KEY_B3_0])();
+					isShift = ispushed = false;
 					isNewNumber = true;
-					isMenu = false;
+				}
+
+				else
+				{
+					if (key > KEY_D0_9) 
+						(*dispatch[key - KEY_D0_9])();
+					else
+						(*dispatch[0])();
 				}
 			}
-
-			else if (isShift)
-			{
-				(*dispatch[6 + key - KEY_B3_0])();
-				isShift = ispushed = false;
-				isNewNumber = true;
-			}
-
-			else
-			{
-				if (key > KEY_D0_9) 
-					(*dispatch[key - KEY_D0_9])();
-				else
-					(*dispatch[0])();
-			}
+			PrintScreen();
 		}
-		PrintScreen(); // Print screen every keypress (or if key == KEY_DUMMY)
 	}
+	return 0;
 }
