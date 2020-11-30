@@ -270,25 +270,25 @@ static void PowerOff()
 	frameCounter = POWEROFF_FRAMES;
 }
 
-void X_Is_X_Add_Y()
+void AddXY()
 {
 	stack[0] += stack[1];
 	StackPullUpper();
 }
 
-void X_Is_Y_Sub_X()
+void SubYX()
 {
 	stack[0] = stack[1] - stack[0];
 	StackPullUpper();
 }
 
-void X_Is_X_Mul_Y()
+void MulXY()
 {
 	stack[0] *= stack[1];
 	StackPullUpper();
 }
 
-void X_Is_Y_Div_X()
+void DivYX()
 {
 	stack[0] = stack[1] / stack[0];
 	StackPullUpper();
@@ -343,8 +343,8 @@ void _contrast();
 void _cos();
 void _cosh();
 void _dot();
-void EnterExp();
-void _enter();
+void EnterExponent();
+void PushX();
 void _exp();
 void _gamma();
 void _inv();
@@ -354,7 +354,7 @@ void _menu();
 void _nd();
 void _newnumber();
 void _nop();
-void _numinput();
+void EnterDigit();
 void _p2r();
 void _recplay();
 void _play();
@@ -381,31 +381,32 @@ void _tanh();
 
 void (*dispatch[])() = 
 {
-	&_numinput,
-	&_nop,
-	&ClearX,
-	&EnterExp,
-	&_enter,
-	&ChangeSign,
-	&ReadBattery,
+	/* [ ] */ &EnterDigit,
+	/* [:] */ &_dot,
+	/* [;] */ &ClearX,
+	/* [<] */ &EnterExponent,
+	/* [=] */ &PushX,
+	/* [>] */ &ChangeSign,
 
-	&Recall,
-	&Store,
-	&X_Is_Y_Sub_X,
-	&_const,
-	&_cmdkey,
-	&X_Is_X_Mul_Y,
-	&_menu,
-	&_sum,
-	&X_Is_Y_Div_X,
-	&SwapStackXY,
-	&PowerOff,
-	&RotateStackUp,
-	&X_Is_X_Add_Y,
-	&RotateStackDown,
-	&_nop,
+	// SHIFT + KEY operations:
+	/* [0] */ &ReadBattery,
+	/* [1] */ &Recall,
+	/* [2] */ &Store,
+	/* [3] */ &SubYX,
+	/* [4] */ &_const,
+	/* [5] */ &_cmdkey,
+	/* [6] */ &MulXY,
+	/* [7] */ &_menu,
+	/* [8] */ &_sum,
+	/* [9] */ &DivYX,
+	/* [:] */ &SwapStackXY,
+	/* [;] */ &PowerOff,
+	/* [<] */ &RotateStackUp,
+	/* [=] */ &AddXY,
+	/* [>] */ &RotateStackDown,
+	/* [?] */ &_nop,
 
-	// MENU
+	// MENU operations:
 	&_sqrt,
 	&_pow,
 	&_inv,
@@ -482,8 +483,10 @@ void ChangeSign()
 }
 
 void ClearX()
-{ // CLX
+{
 	stack[0] = 0.f;
+	decimals = 0;
+	isdot = isNewNumber = false;
 }
 
 void _cmdkey()
@@ -518,20 +521,17 @@ void _cosh()
 }
 
 void _dot()
-{ // DOT .
-	if (!isShift)
-	{
-		_newnumber();
-		isdot = true;
-	}
+{
+	_newnumber();
+	isdot = true;
 }
-void EnterExp()
+void EnterExponent()
 { // EE
 	stack[0] = Pow10(stack[0]);
-	X_Is_X_Mul_Y();
+	MulXY();
 	isNewNumber = true;
 }
-void _enter()
+void PushX()
 { // ENTER
 	StackPush();
 	ispushed = isNewNumber = true;
@@ -567,22 +567,17 @@ void _nd()
 	PlayString(PSND);
 }
 void _newnumber()
-{ // NEW number
+{
 	if (isNewNumber)
-	{ // New number
-		//if (ispushed) ispushed = false;
-		//else _push();
-		if (!ispushed)
-			StackPush();
-		stack[0] = 0.0;
-		decimals = 0;
-		isdot = isNewNumber = false;
+	{
+		if (!ispushed) StackPush();
+		ClearX();
 	}
 }
 
 void _nop() {} // NOP - no operation
 
-void _numinput()
+void EnterDigit()
 { // NUM Numeric input (0...9)
 	_newnumber();
 	if (isdot)
@@ -614,7 +609,7 @@ static float _pow()
 { // POW
 	SwapStackXY();
 	_ln();
-	X_Is_X_Mul_Y();
+	MulXY();
 	_exp();
 }
 
@@ -943,10 +938,6 @@ void loop()
 		isShift ^= true;
 		key = KEY_DUMMY;
 	}
-	else if (key == KEY_C3_D)
-	{
-		_dot();
-	}
 
 	if (key)
 	{
@@ -986,10 +977,10 @@ void loop()
 
 			else
 			{
-				if (key <= KEY_D0_9)
-					(*dispatch[0])(); // Dispatch number 0(0...9)
+				if (key > KEY_D0_9) 
+					(*dispatch[key - KEY_D0_9])();
 				else
-					(*dispatch[key - KEY_D0_9])(); // Dispatch key (1d: 2c; 3e< 4x= 5s> 6f? + other) due to function table
+					(*dispatch[0])();
 			}
 		}
 		PrintScreen(); // Print screen every keypress (or if key == KEY_DUMMY)
