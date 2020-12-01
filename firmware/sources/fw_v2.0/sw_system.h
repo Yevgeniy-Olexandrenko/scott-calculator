@@ -1,5 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
+#define _ones(x)   ((x) % 10)             // Calculates ones unit
+#define _tens(x)   (((x) / 10) % 10)      // Calculates tens unit
+#define _huns(x)   (((x) / 100) % 10)     // Calculates hundreds unit
+#define _tsds(x)   (((x) / 1000) % 10)    // Calculates thousands unit
+
+
+////////////////////////////////////////////////////////////////////////////////
+
 #define FONT_OFFSET ','
 #define FONT_WIDTH  5
 
@@ -128,11 +136,9 @@ static uint8_t expand2bit(uint8_t b)
 
 void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 {
-	uint8_t tx = dx;
 	for (uint8_t k = 0; k < h; k++)
 	{
-		if (k > 0) DisplayPosition(dx = tx, ++dy);
-
+		if (k > 0) DisplayPosition(dx, ++dy);
 		for (uint8_t j = 0; j < FONT_WIDTH; j++)
 		{
 			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + j]) << printbitshift;
@@ -153,7 +159,6 @@ void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 
 void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
-	DisplayPosition(x, y);
 	const char* ptr = (const char*)s;
 	uint8_t ww = FONT_WIDTH * w + 1;
 	while(uint8_t ch = pgm_read_byte(ptr++))
@@ -161,6 +166,12 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x
 		PrintCharAt(ch, w, h, x, y);
 		x += ww;
 	}
+}
+
+void PrintTwoDigitNumberAt(uint8_t number, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+{
+	PrintCharAt('0' + _tens(number), w, h, x, y);
+	PrintCharAt('0' + _ones(number), w, h, x + FONT_WIDTH * w + 1, y);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

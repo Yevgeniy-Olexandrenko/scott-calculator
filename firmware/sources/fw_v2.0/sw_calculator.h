@@ -28,10 +28,6 @@
 #define _min(a,b) ((a) < (b) ? (a) : (b))
 #define _max(a,b) ((a) > (b) ? (a) : (b))
 #define _abs(x)    ((x < 0) ? (-x) : (x)) // abs()-substitute macro
-#define _ones(x)   ((x) % 10)             // Calculates ones unit
-#define _tens(x)   (((x) / 10) % 10)      // Calculates tens unit
-#define _huns(x)   (((x) / 100) % 10)     // Calculates hundreds unit
-#define _tsds(x)   (((x) / 1000) % 10)    // Calculates thousands unit
 #define _to_rad(x) ((x) * (PI / 180))
 #define _to_deg(x) ((x) * (180 / PI))
 
@@ -765,8 +761,7 @@ void PrintFloat(float f, uint8_t h, uint8_t y)
 					e = -e;
 					PrintCharAt('-', CHAR_SIZE_M, s, E_SIGN, y);
 				}
-				PrintCharAt('0' + _tens(e), CHAR_SIZE_M, s, E_DIGIT1, y);
-				PrintCharAt('0' + _ones(e), CHAR_SIZE_M, s, E_DIGIT2, y);
+				PrintTwoDigitNumberAt(e, CHAR_SIZE_M, s, E_DIGIT1, y);
 			}
 
 			PrintCharAt('.', CHAR_SIZE_M, h, M_POINT, y);
@@ -788,6 +783,17 @@ void PrintFloat(float f, uint8_t h, uint8_t y)
 void PrintScreen()
 {
 	DisplayFill(0x00);
+
+#if 0
+	RTCRead();
+	{
+		PrintTwoDigitNumberAt(rtc_hours, CHAR_SIZE_M, CHAR_SIZE_L, 0, 0);
+		PrintCharAt('.', CHAR_SIZE_M, CHAR_SIZE_L, 22, 0);
+		PrintTwoDigitNumberAt(rtc_minutes, CHAR_SIZE_M, CHAR_SIZE_L, 33, 0);
+		PrintCharAt('.', CHAR_SIZE_M, CHAR_SIZE_L, 55, 0);
+		PrintTwoDigitNumberAt(rtc_seconds, CHAR_SIZE_M, CHAR_SIZE_L, 66, 0);
+	}
+#else
 
 	uint8_t i;
 	uint8_t h = CHAR_SIZE_M;
@@ -827,6 +833,8 @@ void PrintScreen()
 			PrintFloat(stack[0], h, 0);
 		}
 	}
+
+#endif	
 
 	DisplayRefresh();
 }
