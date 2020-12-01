@@ -331,7 +331,7 @@ void ChangeSign();
 void ClearX();
 void _cmdkey();
 void _const();
-void _contrast();
+void SetBrightness();
 void _cos();
 void _cosh();
 void _dot();
@@ -381,64 +381,64 @@ void (*dispatch[])() =
 	/* [>] */ &ChangeSign,
 
 	// SHIFT + KEY operations:
-	/* [0] */ &ReadBattery,
-	/* [1] */ &Recall,
-	/* [2] */ &Store,
-	/* [3] */ &SubYX,
-	/* [4] */ &_const,
-	/* [5] */ &_cmdkey,
-	/* [6] */ &MulXY,
-	/* [7] */ &_menu,
-	/* [8] */ &_sum,
-	/* [9] */ &DivYX,
-	/* [:] */ &SwapStackXY,
-	/* [;] */ &PowerOff,
-	/* [<] */ &RotateStackUp,
-	/* [=] */ &AddXY,
-	/* [>] */ &RotateStackDown,
-	/* [?] */ &_nop,
+	/* [?] [0] */ &ReadBattery,
+	/* [@] [1] */ &Recall,
+	/* [A] [2] */ &Store,
+	/* [B] [3] */ &SubYX,
+	/* [C] [4] */ &_const,
+	/* [D] [5] */ &_cmdkey,
+	/* [E] [6] */ &MulXY,
+	/* [F] [7] */ &_menu,
+	/* [G] [8] */ &_sum,
+	/* [H] [9] */ &DivYX,
+	/* [I] [:] */ &SwapStackXY,
+	/* [J] [;] */ &PowerOff,
+	/* [K] [<] */ &RotateStackUp,
+	/* [L] [=] */ &AddXY,
+	/* [M] [>] */ &RotateStackDown,
+	/* [N] [?] */ &_nop,
 
 	// MENU operations:
-	&_sqrt,
-	&_pow,
-	&_inv,
-	&_exp,
-	&_ln,
-	&_gamma,
-	&_r2p,
-	&_p2r,
-	&_pv,
-	&_nd,
-	&_stat,
-	&_lr,
-	&_sin,
-	&_cos,
-	&_tan,
-	&_asin,
-	&_acos,
-	&_atan,
-	&_sinh,
-	&_cosh,
-	&_tanh,
-	&_asinh,
-	&_acosh,
-	&_atanh,
-	&_setconst,
-	&_setcmdkey,
-	&_contrast,
-	&_rec,
-	&_rec,
-	&_rec,
-	&_play,
-	&_play,
-	&_play,
+	/* [O] */ &_sqrt,
+	/* [P] */ &_pow,
+	/* [Q] */ &_inv,
+	/* [R] */ &_exp,
+	/* [S] */ &_ln,
+	/* [T] */ &_gamma,
+	/* [U] */ &_r2p,
+	/* [V] */ &_p2r,
+	/* [W] */ &_pv,
+	/* [X] */ &_nd,
+	/* [Y] */ &_stat,
+	/* [Z] */ &_lr,
+	/* [[] */ &_sin,
+	/* [\] */ &_cos,
+	/* []] */ &_tan,
+	/* [^] */ &_asin,
+	/* [_] */ &_acos,
+	/* [`] */ &_atan,
+	/* [a] */ &_sinh,
+	/* [b] */ &_cosh,
+	/* [c] */ &_tanh,
+	/* [d] */ &_asinh,
+	/* [e] */ &_acosh,
+	/* [f] */ &_atanh,
+	/* [g] */ &_setconst,
+	/* [h] */ &_setcmdkey,
+	/* [i] */ &SetBrightness,
+	/* [j] */ &_rec,
+	/* [k] */ &_rec,
+	/* [l] */ &_rec,
+	/* [m] */ &_play,
+	/* [n] */ &_play,
+	/* [o] */ &_play,
 
-	// Hidden links
-	&_sum1,
-	&_sum2stack,
-	&SaveStackToShadowBuffer,
-	&_shadowload1,
-	&_shadowload2
+	// Hidden operations:
+	/* [p] */ &_sum1,
+	/* [q] */ &_sum2stack,
+	/* [r] */ &SaveStackToShadowBuffer,
+	/* [s] */ &_shadowload1,
+	/* [t] */ &_shadowload2
 };
 
 // Function pointer array subroutines
@@ -496,11 +496,14 @@ void _const()
 		EEPROM.get(EECONST + (uint8_t)stack[0], stack[0]);
 }
 
-void _contrast()
+void SetBrightness()
 {
-	brightness = stack[0];
-	DisplayBrightness(brightness);
-	EEPROM[EECONTRAST] = brightness;
+	float X = stack[0];
+	if (X >= 0 && X <= 255)
+	{
+		brightness = (uint8_t)stack[0];
+		EEPROM[EECONTRAST] = brightness;
+	}
 }
 
 void _cos()
@@ -586,7 +589,7 @@ void _p2r()
 }
 void _recplay()
 { // Prepare variables for REC or PLAY
-	recslot = key - KEY_B0_7;
+	recslot = key - KEY_B2_1;
 	recptr = EEREC + recslot * MAXREC;
 }
 void _play()
@@ -839,12 +842,12 @@ int main()
 	KeyboardInit();
 
 	DisplayTurnOn();
-	EnableFrameSync();
+	FrameSyncEnable();
 	ResetCalculator();
 
 	for (;;)
 	{
-		WaitForNextFrame(); 
+		FrameSyncWait(); 
 
 		if (isfirstrun)
 		{

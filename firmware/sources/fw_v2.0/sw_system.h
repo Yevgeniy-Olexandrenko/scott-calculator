@@ -30,9 +30,7 @@ const uint8_t font[] PROGMEM =
 	0x00, 0x7f, 0x3e, 0x1c, 0x08, // < play
 	0x04, 0xbe, 0xbf, 0xbe, 0x04, // = shift sign
 	0x08, 0x08, 0x3e, 0x1c, 0x08, // > arrow to right
-	//
 	0x00, 0x00, 0x2f, 0x00, 0x00, // ? !
-	//
 	0x1c, 0x3e, 0x3e, 0x3e, 0x1c, // @ record
 	0x7f, 0x09, 0x09, 0x09, 0x7f, // A
 	0x7f, 0x49, 0x49, 0x4f, 0x78, // B
@@ -175,19 +173,19 @@ static void ResetFrameCounter()
 	frameCounter = 0;
 }
 
-static void EnableFrameSync()
+static void FrameSyncEnable()
 {
 	// frame rate is about 15 FPS
 	WDTInit(WDT_MODE_INT, WDT_TIMEOUT_64MS);
 	ResetFrameCounter();
 }
 
-static void DisableFrameSync()
+static void FrameSyncDisable()
 {
 	WDTInit(WDT_MODE_DISABLED, 0);
 }
 
-static void WaitForNextFrame()
+static void FrameSyncWait()
 {
 	frameWaiting = true;
 	while (frameWaiting) ExecuteSleep(SLEEP_MODE_IDLE);
@@ -204,10 +202,10 @@ static void DeepSleep()
 	_delay_ms(250);
 
 	DisplayTurnOff();
-	DisableFrameSync();
+	FrameSyncDisable();
 	
 	ExecuteSleep(SLEEP_MODE_PWR_DOWN);
 
-	EnableFrameSync();
+	FrameSyncEnable();
 	DisplayTurnOn();
 }
