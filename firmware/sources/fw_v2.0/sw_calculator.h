@@ -53,66 +53,20 @@ static float    sum[STACK_SIZE];	   // Memory to save statistic sums
 static float    shadow[STACK_SIZE];    // Shadow memory (buffer) for stack
 static uint8_t  restore;               // Position of stack salvation (including mem)
 
-const char c00[] PROGMEM = ",X";  // Squareroot
-const char c01[] PROGMEM = "Y;";  // Raise to the power of
-const char c02[] PROGMEM = "1/X"; // Reciprocal
-
-const char c03[] PROGMEM = "EXP"; // Exponential
-const char c04[] PROGMEM = "LN";  // Natural logarithm
-const char c05[] PROGMEM = "X?";   // Gamma function (due to Nemes)
-
-const char c06[] PROGMEM = ">P";  // Rectangular to polar coordinates
-const char c07[] PROGMEM = ">R";  // Polar to rectangular coordinates
-const char c08[] PROGMEM = "PV";  // Present value (annuity)
-
-const char c09[] PROGMEM = "ND";  // Normal distribution (CDF/PDF)
-const char c10[] PROGMEM = "STA"; // Statistics
-const char c11[] PROGMEM = "LR";  // Linear regression
-
-const char c12[] PROGMEM = "SIN"; // Sine
-const char c13[] PROGMEM = "COS"; // Cosine
-const char c14[] PROGMEM = "TAN"; // Tangent
-
-const char c15[] PROGMEM = "ASN"; // Inverse sine
-const char c16[] PROGMEM = "ACS"; // Inverse cosine
-const char c17[] PROGMEM = "ATN"; // Inverse tangent
-
-const char c18[] PROGMEM = "SNH"; // Hyperbolic sine
-const char c19[] PROGMEM = "CSH"; // Hyperbolic cosine
-const char c20[] PROGMEM = "TNH"; // Hyperbolic tangent
-
-const char c21[] PROGMEM = "ASH"; // Inverse hyperbolic sine
-const char c22[] PROGMEM = "ACH"; // Inverse hyperbolic cosine
-const char c23[] PROGMEM = "ATH"; // Inverse hyperbolic tangent
-
-const char c24[] PROGMEM = "CST"; // Set constant key
-const char c25[] PROGMEM = "CMD"; // Set command key
-const char c26[] PROGMEM = "LIT"; // Set contrast/brightness
-
-const char c27[] PROGMEM = "@1";  //  ... Record user keys
-const char c28[] PROGMEM = "@2";  //
-const char c29[] PROGMEM = "@3";  //
-
-const char c30[] PROGMEM = "<1";  //  ... Play user keys
-const char c31[] PROGMEM = "<2";  //
-const char c32[] PROGMEM = "<3";  //
-
-const char * const cmd[] PROGMEM = 
-{
-	c00, c01, c02,
-	c03, c04, c05,
-	c06, c07, c08,
-	c09, c10, c11,
-	c12, c13, c14,
-	c15, c16, c17,
-	c18, c19, c20,
-	c21, c22, c23,
-	c24, c25, c26,
-	c27, c28, c29,
-	c30, c31, c32
-};
-#define numberofcommands (sizeof(cmd) / sizeof(const char *))
-
+const char menu_str[] PROGMEM = 
+	"\03"
+	",X+" "Y;+" "1/X"  // Squareroot, Raise to the power of, Reciprocal
+	"EXP" "LN+" "X?+"  // Exponential, Natural logarithm, Gamma function (due to Nemes)
+	"R>P" "P>R" "PV+"  // Rectangular to polar coordinates, Polar to rectangular coordinates, Present value (annuity)
+	"ND+" "STA" "LR+"  // Normal distribution (CDF/PDF), Statistics, Linear regression
+	"SIN" "COS" "TAN"  // Sine, Cosine, Tangent
+	"ASN" "ACS" "ATN"  // Inverse sine, Inverse cosine, Inverse tangent
+	"SNH" "CSH" "TNH"  // Hyperbolic sine, Hyperbolic cosine,  Hyperbolic tangent
+	"ASH" "ACH" "ATH"  // Inverse hyperbolic sine, Inverse hyperbolic cosine, Inverse hyperbolic tangent
+	"CST" "CMD" "BRI"  // Set constant key, Set command key, Set display brightness
+	"@1+" "@2+" "@3+"  // Record user keys
+	"<1+" "<2+" "<3+"; // Play user keys
+#define numberofcommands 33	
 
 const char month_str[] PROGMEM = 
 	"\03"
@@ -810,8 +764,7 @@ void PrintCalculator()
 	{
 		for (uint8_t i = 0; i < FKEYNR; i++)
 		{
-			void * ptr = pgm_read_word(&cmd[select * FKEYNR + i]);
-			PrintStringAt(FPSTR(ptr), CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
+			PrintStringAt(FPSTR(menu_str), select * FKEYNR + i, CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
 		}
 	}
 	else

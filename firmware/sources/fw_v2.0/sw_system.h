@@ -8,12 +8,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define FONT_OFFSET ','
+#define FONT_OFFSET '+'
 #define FONT_WIDTH  5
 
 const uint8_t font[] PROGMEM =
 {
-	// No ascii signs below 44 (',') to save memory (flash)
+	// No ascii signs below 43 ('+') to save memory (flash)
+	0x00, 0x00, 0x00, 0x00, 0x00, // + space
+
 	0b00010000, // , squareroot
 	0b00100000,
 	0b01111111,
