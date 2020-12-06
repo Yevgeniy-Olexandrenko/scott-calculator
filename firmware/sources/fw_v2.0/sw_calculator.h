@@ -785,7 +785,7 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 
 static void PrintClock()
 {
-	DisplayFill(0x00);
+	DisplayClear();
 
 	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 20, 0);
 	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 47, 0);
@@ -801,14 +801,11 @@ static void PrintClock()
 	DisplayRefresh();
 }
 
-void PrintCalculator()
+static void PrintCalculator()
 {
-	DisplayFill(0x00);
+	DisplayClear();
 
-	uint8_t i;
 	uint8_t h = CHAR_SIZE_M;
-
-	printbitshift = 1;
 	if (isPlayString || isplay)
 	{
 		PrintStringAt(FPSTR(message_str), MSG_RUN, CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
@@ -823,13 +820,12 @@ void PrintCalculator()
 	else
 	{
 		if (isrec)
-			PrintCharAt(CHARREC, CHAR_SIZE_M, CHAR_SIZE_M, 106, 2);
+			PrintCharAt(CHARREC, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT1, 2);
 		if (isShift)
-			PrintCharAt(CHARSHIFT, CHAR_SIZE_M, CHAR_SIZE_M, 106 + 11, 2);
+			PrintCharAt(CHARSHIFT, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT2, 2);
 		h = CHAR_SIZE_L;
 	}
 
-	printbitshift = 0;
 	if (!isPlayString && !isplay)
 	{
 		PrintFloat(stack.reg.X, h, 0);

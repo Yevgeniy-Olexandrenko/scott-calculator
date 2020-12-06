@@ -53,7 +53,13 @@ const uint8_t font[] PROGMEM =
 
 	0x00, 0x1b, 0x04, 0x1b, 0x00, // ; raised x
 	0x00, 0x7f, 0x3e, 0x1c, 0x08, // < play
-	0x04, 0xbe, 0xbf, 0xbe, 0x04, // = shift sign
+
+	0b00000100, // = shift sign
+	0b01111110,
+	0b01111111,
+	0b01111110,
+	0b00000100,
+
 	0x08, 0x08, 0x3e, 0x1c, 0x08, // > arrow to right
 	0x00, 0x00, 0x2f, 0x00, 0x00, // ? !
 	0x1c, 0x3e, 0x3e, 0x3e, 0x1c, // @ record
@@ -133,8 +139,6 @@ const uint8_t font[] PROGMEM =
 #define CHAR_SIZE_M 2
 #define CHAR_SIZE_L 4
 
-static uint8_t printbitshift = 0;
-
 static uint8_t expand4bit(uint8_t b)
 {	
 	// 0000abcd -> aabbccdd
@@ -158,7 +162,7 @@ void PrintChar(uint8_t c, uint8_t w, uint8_t h)
 		if (k > 0) DisplayPosition(dx, ++dy);
 		for (uint8_t j = 0; j < FONT_WIDTH; j++)
 		{
-			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + j]) << printbitshift;
+			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + j]);
 			if (h == CHAR_SIZE_M)
 				bitmap = expand4bit((bitmap >> (k * 4)) & 0x0f); // Expand 0000abcd
 			else if (h == CHAR_SIZE_L)

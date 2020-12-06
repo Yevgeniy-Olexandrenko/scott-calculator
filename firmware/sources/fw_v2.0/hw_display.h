@@ -115,12 +115,12 @@ static void DisplayWrite(uint8_t b, uint8_t s)
 	ssd1306_send_stop();
 }
 
-static void DisplayFill(uint8_t b)
+static void DisplayClear()
 {
 	DisplayPosition(0, 0);
 	for (uint8_t i = DISPLAY_PAGES; i > 0; --i)
 	{
-		DisplayWrite(b, DISPLAY_WIDTH);
+		DisplayWrite(0x00, DISPLAY_WIDTH);
 	}
 }
 
