@@ -190,7 +190,7 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t i, uint8_t w, uint8_t h
 	}
 }
 
-void PrintTwoDigitNumberAt(uint8_t number, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+void PrintTwoDigitAt(uint8_t number, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	PrintCharAt('0' + _tens(number), w, h, x, y);
 	PrintCharAt('0' + _ones(number), w, h, x + FONT_WIDTH * w + 1, y);

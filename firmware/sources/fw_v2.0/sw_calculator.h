@@ -2,15 +2,15 @@
 
 
 
-#define CHARSHIFT '='	    // Character for shift symbol
-#define CHARREC   '@'       // Character for recording symbol
+#define CHAR_SHIFT '='	    // Character for shift symbol
+#define CHAR_REC   '@'       // Character for recording symbol
 
 #define DIMOUT_FRAMES 156   // Frames before display dim out (about 10 sec)
 #define POWEROFF_FRAMES 469 // Frames before power off (about 30 sec)
 
 #define TINYNUMBER 1e-7	    // Number for rounding to 0
 #define MAXITERATE 100	    // Maximal number of Taylor series loops to iterate
-#define FKEYNR 3		    // 3 function keys
+#define FUN_PER_LINE 3		// 3 function keys
 #define KEY_DUMMY 0xff	    // Needed to enter key-loop and printstring
 
 #define TYPEREC_STEPS 70	// Number of record steps per slot
@@ -56,8 +56,8 @@ static uint8_t  brightness;            // Contrast
 static uint8_t  isfirstrun = true;     // Allows first run of loop and printscreen without key query
 static uint8_t  recSlot;               // Slot number for recording
 static uint8_t  recIndex;              // Index of recording step
-static uint8_t  isrec;
-static uint8_t  isplay;                // True, if "Type Recorder" records or plays
+static uint8_t  isTypeRecording;
+static uint8_t  isTypePlaying;                
 static float    sum[STACK_SIZE];	   // Memory to save statistic sums
 static Stack    shadow;                // Shadow memory (buffer) for stack
 static uint8_t  restore;               // Position of stack salvation (including mem)
@@ -565,7 +565,7 @@ void _recplay()
 void _play()
 { // PLAY
 	_recplay();
-	isplay = isNewNumber = true;
+	isTypePlaying = isNewNumber = true;
 }
 
 
@@ -595,7 +595,7 @@ void _r2p()
 void _rec()
 { // REC
 	_recplay();
-	isrec = true;
+	isTypeRecording = true;
 }
 
 static void RotateStackUp()
@@ -777,7 +777,7 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 					e = -e;
 					PrintCharAt('-', CHAR_SIZE_M, s, E_SIGN, y);
 				}
-				PrintTwoDigitNumberAt(e, CHAR_SIZE_M, s, E_DIGIT1, y);
+				PrintTwoDigitAt(e, CHAR_SIZE_M, s, E_DIGIT1, y);
 			}
 		}
 	}
@@ -789,14 +789,14 @@ static void PrintClock()
 
 	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 20, 0);
 	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 47, 0);
-	PrintTwoDigitNumberAt(rtc_hours, CHAR_SIZE_M, CHAR_SIZE_L, 0, 0);
-	PrintTwoDigitNumberAt(rtc_minutes, CHAR_SIZE_M, CHAR_SIZE_L, 27, 0);
-	PrintTwoDigitNumberAt(rtc_seconds, CHAR_SIZE_M, CHAR_SIZE_L, 54, 0);
+	PrintTwoDigitAt(rtc_hours, CHAR_SIZE_M, CHAR_SIZE_L, 0, 0);
+	PrintTwoDigitAt(rtc_minutes, CHAR_SIZE_M, CHAR_SIZE_L, 27, 0);
+	PrintTwoDigitAt(rtc_seconds, CHAR_SIZE_M, CHAR_SIZE_L, 54, 0);
 
 	PrintStringAt(FPSTR(month_str), rtc_month - 1, CHAR_SIZE_S, CHAR_SIZE_S, 85, 0);
-	PrintTwoDigitNumberAt(rtc_date, CHAR_SIZE_M, CHAR_SIZE_S, 107, 0);
-	PrintTwoDigitNumberAt(20, CHAR_SIZE_M, CHAR_SIZE_S, 85, 1);
-	PrintTwoDigitNumberAt(rtc_year, CHAR_SIZE_M, CHAR_SIZE_S, 107, 1);
+	PrintTwoDigitAt(rtc_date, CHAR_SIZE_M, CHAR_SIZE_S, 107, 0);
+	PrintTwoDigitAt(20, CHAR_SIZE_M, CHAR_SIZE_S, 85, 1);
+	PrintTwoDigitAt(rtc_year, CHAR_SIZE_M, CHAR_SIZE_S, 107, 1);
 
 	DisplayRefresh();
 }
@@ -804,33 +804,29 @@ static void PrintClock()
 static void PrintCalculator()
 {
 	DisplayClear();
-
 	uint8_t h = CHAR_SIZE_M;
-	if (isPlayString || isplay)
+
+	if (isPlayString || isTypePlaying)
 	{
 		PrintStringAt(FPSTR(message_str), MSG_RUN, CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
 	}
 	else if (isMenu)
 	{
-		for (uint8_t i = 0; i < FKEYNR; i++)
+		for (uint8_t i = 0; i < FUN_PER_LINE; ++i)
 		{
-			PrintStringAt(FPSTR(menu_str), select * FKEYNR + i, CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
+			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
 		}
 	}
 	else
 	{
-		if (isrec)
-			PrintCharAt(CHARREC, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT1, 2);
+		if (isTypeRecording)
+			PrintCharAt(CHAR_REC, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT1, 2);
 		if (isShift)
-			PrintCharAt(CHARSHIFT, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT2, 2);
+			PrintCharAt(CHAR_SHIFT, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT2, 2);
 		h = CHAR_SIZE_L;
 	}
 
-	if (!isPlayString && !isplay)
-	{
-		PrintFloat(stack.reg.X, h, 0);
-	}
-
+	PrintFloat(stack.reg.X, h, 0);
 	DisplayRefresh();
 }
 
@@ -902,9 +898,9 @@ int main()
 				}
 			}
 
-			else if (isrec || isplay)
+			else if (isTypeRecording || isTypePlaying)
 			{ // ### Type recorder (else: playstring works inside play)
-				if (isrec)
+				if (isTypeRecording)
 				{ // Record keys and write to EEPPROM
 					if (key && recIndex < TYPEREC_STEPS)
 					{
@@ -915,14 +911,14 @@ int main()
 				{
 					if (key == KEY_A3_C)
 					{ // Stop execution
-						isplay = false;
+						isTypePlaying = false;
 						key = KEY_DUMMY;
 					}
 					key = eeprom_read_byte(&eeprom_typerecord[recSlot][recIndex++]);
 				}
 				if (key == KEY_A3_C || recIndex >= TYPEREC_STEPS)
 				{
-					isplay = isrec = false;
+					isTypePlaying = isTypeRecording = false;
 					key = KEY_DUMMY;
 				}
 			}
@@ -939,7 +935,7 @@ int main()
 				{
 					if (isMenu)
 					{
-						uint8_t limit = numberofcommands / FKEYNR - 1;
+						uint8_t limit = numberofcommands / FUN_PER_LINE - 1;
 						if (key == KEY_A1_E)
 						{
 							if (select > 0) select--; else select = limit;
@@ -954,7 +950,7 @@ int main()
 						}
 						else if (key >= KEY_B2_1 && key <= KEY_D2_3)
 						{
-							uint8_t index = select * FKEYNR + (key - KEY_B2_1);
+							uint8_t index = select * FUN_PER_LINE + (key - KEY_B2_1);
 							(*dispatch[22 + index])();
 							isNewNumber = true;
 							isMenu = false;
