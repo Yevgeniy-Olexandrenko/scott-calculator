@@ -1,10 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
-#define _ones(x)   ((x) % 10)             // Calculates ones unit
-#define _tens(x)   (((x) / 10) % 10)      // Calculates tens unit
-#define _huns(x)   (((x) / 100) % 10)     // Calculates hundreds unit
-#define _tsds(x)   (((x) / 1000) % 10)    // Calculates thousands unit
+template<typename T> static uint8_t _ones(const T & x) { return (uint8_t)(x % 10); }
+template<typename T> static uint8_t _tens(const T & x) { return (uint8_t)((x / 10) % 10); }
+template<typename T> static uint8_t _huns(const T & x) { return (uint8_t)((x / 100) % 10); }
+template<typename T> static uint8_t _tsds(const T & x) { return (uint8_t)((x / 1000) % 10); }
 
+template<typename T> static T _min(const T & a, const T & b) { return a < b ? a : b; }
+template<typename T> static T _max(const T & a, const T & b) { return a > b ? a : b; }
+template<typename T> static T _abs(const T & x) { return x < 0 ? -x : x; }
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -20,9 +20,6 @@
 #define BITSIN  2		    // Bit for sin()
 #define BITASIN 4		    // Bit for asin
 
-#define _min(a,b) ((a) < (b) ? (a) : (b))
-#define _max(a,b) ((a) > (b) ? (a) : (b))
-#define _abs(x)    ((x < 0) ? (-x) : (x)) // abs()-substitute macro
 #define _to_rad(x) ((x) * (PI / 180))
 #define _to_deg(x) ((x) * (180 / PI))
 
@@ -774,7 +771,7 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 
 			if (e)
 			{
-				uint8_t s = _min(CHAR_SIZE_M, h);
+				uint8_t s = _min((uint8_t)CHAR_SIZE_M, h);
 				if (e < 0)
 				{
 					e = -e;
