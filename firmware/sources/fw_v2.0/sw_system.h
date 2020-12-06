@@ -23,7 +23,13 @@ const uint8_t font[] PROGMEM =
 	0b00000001,
 	
 	0x08, 0x08, 0x08, 0x08, 0x08, // -
-	0x00, 0x60, 0x60, 0x00, 0x00, // .
+
+	0b00000000, // .
+	0b00000000,
+	0b00000000,
+	0b01100000,
+	0b01100000,
+
 	0x20, 0x10, 0x08, 0x04, 0x02, // /
 	0x7f, 0x41, 0x41, 0x41, 0x7f, // 0
 	0x00, 0x00, 0x02, 0x7f, 0x00, // 1
@@ -163,17 +169,6 @@ void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
 {
 	DisplayPosition(x, y);
 	PrintChar(c, w, h);
-}
-
-void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
-{
-	const char* ptr = (const char*)s;
-	uint8_t ww = FONT_WIDTH * w + 1;
-	while(uint8_t ch = pgm_read_byte(ptr++))
-	{
-		PrintCharAt(ch, w, h, x, y);
-		x += ww;
-	}
 }
 
 void PrintStringAt(const __FlashStringHelper* s, uint8_t i, uint8_t w, uint8_t h, uint8_t x, uint8_t y)

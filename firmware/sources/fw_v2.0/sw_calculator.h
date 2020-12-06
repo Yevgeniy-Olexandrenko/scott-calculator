@@ -66,7 +66,13 @@ const char menu_str[] PROGMEM =
 	"CST" "CMD" "BRI"  // Set constant key, Set command key, Set display brightness
 	"@1+" "@2+" "@3+"  // Record user keys
 	"<1+" "<2+" "<3+"; // Play user keys
-#define numberofcommands 33	
+#define numberofcommands 33
+
+const char message_str[] PROGMEM =
+	"\03" "ERR" "INF" "RUN";
+#define MSG_ERR 0
+#define MSG_INF 1
+#define MSG_RUN 2
 
 const char month_str[] PROGMEM = 
 	"\03"
@@ -662,14 +668,13 @@ void _tanh()
 	PlayString(PSTANH);
 }
 
-
-
+#define DIGITS      (6)
 #define DIGIT_WIDTH (FONT_WIDTH * CHAR_SIZE_M + 1)
+#define POINT_WIDTH (DIGIT_WIDTH - 6)
 
 #define M_SIGN      (0)
-#define M_DIGIT1    (M_SIGN + DIGIT_WIDTH)
-#define M_POINT     (M_DIGIT1 + DIGIT_WIDTH - 2)
-#define M_DIGIT2    (M_POINT + DIGIT_WIDTH - 4)
+#define M_DIGIT_FST (M_SIGN + DIGIT_WIDTH)
+#define M_DIGIT_LST (M_DIGIT_FST + ((DIGITS - 1) * DIGIT_WIDTH) + POINT_WIDTH)
 
 #define E_DIGIT2    (128 - (DIGIT_WIDTH - 1))
 #define E_DIGIT1    (E_DIGIT2 - DIGIT_WIDTH)
@@ -679,7 +684,7 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 {
 	if (isnan(f))
 	{
-		PrintStringAt(F("ERROR"), CHAR_SIZE_M, h, M_DIGIT1, y);
+		PrintStringAt(FPSTR(message_str), MSG_ERR, CHAR_SIZE_M, h, M_DIGIT_FST, y);
 	}
 	else
 	{
@@ -691,17 +696,54 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 
 		if (isinf(f))
 		{
-			PrintStringAt(F("INFINITY"), CHAR_SIZE_M, h, M_DIGIT1, y);
+			PrintStringAt(FPSTR(message_str), MSG_INF, CHAR_SIZE_M, h, M_DIGIT_FST, y);
 		}
 		else
 		{
-			int8_t e; uint32_t m;
-			e = (int8_t)(log(f) / log(10.f));
-			m = (uint32_t)((f / Pow10(e - 5)) + 0.5f);
-			if (m > 0 && m < 1e5)
+			int8_t e = (int8_t)(log(f) / log(10.f));
+			uint32_t m = (uint32_t)(f / Pow10(e - (DIGITS - 1)) + 0.5f);
+
+			if (m > 0 && m < Pow10(DIGITS - 1))
 			{
-				m = (uint32_t)((f / Pow10(--e - 5)) + 0.5f);
+				m = (uint32_t)(f / Pow10(--e - (DIGITS - 1)) + 0.5f);
 			}
+
+			int8_t int_dig = 0, fra_dig, lead_z = 0;
+			if (abs(e) >= DIGITS)
+			{
+				int_dig = 1;
+			}
+			else if (e >= 0)
+			{
+				int_dig = 1 + e; e = 0;
+			}
+			else // e < 0
+			{
+				int_dig = 0; lead_z = -e; e = 0;
+				for (uint8_t n = lead_z; n--; m /= 10);
+			}
+
+			uint8_t i = M_DIGIT_LST, nonzero = false;
+			for (fra_dig = DIGITS - lead_z - int_dig; fra_dig--; m /= 10, i -= DIGIT_WIDTH)
+			{
+				uint8_t ones = _ones(m);
+				if (ones || nonzero)
+				{
+					PrintCharAt('0' + ones, CHAR_SIZE_M, h, i, y);
+					nonzero = true;
+				}
+			}
+
+			if (nonzero)
+			{
+				for (; --lead_z > 0; i -= DIGIT_WIDTH)
+					PrintCharAt('0', CHAR_SIZE_M, h, i, y);
+				PrintCharAt('.', CHAR_SIZE_M, h, i, y);
+			}
+			
+			PrintCharAt('0', CHAR_SIZE_M, h, i -= POINT_WIDTH, y);
+			for (; int_dig--; m /= 10, i -= DIGIT_WIDTH)
+				PrintCharAt('0' + _ones(m), CHAR_SIZE_M, h, i, y);
 
 			if (e)
 			{
@@ -713,19 +755,6 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 				}
 				PrintTwoDigitNumberAt(e, CHAR_SIZE_M, s, E_DIGIT1, y);
 			}
-
-			PrintCharAt('.', CHAR_SIZE_M, h, M_POINT, y);
-			uint8_t nonzero = false;
-			for (int8_t i = 4; i >= 0; --i, m /= 10)
-			{
-				uint8_t ones = _ones(m);
-				if (ones || nonzero)
-				{
-					PrintCharAt('0' + ones, CHAR_SIZE_M, h, M_DIGIT2 + i * DIGIT_WIDTH, y);
-					nonzero = true;
-				}
-			}
-			PrintCharAt('0' + _ones(m), CHAR_SIZE_M, h, M_DIGIT1, y);
 		}
 	}
 }
@@ -742,7 +771,7 @@ static void PrintClock()
 
 	PrintStringAt(FPSTR(month_str), rtc_month - 1, CHAR_SIZE_S, CHAR_SIZE_S, 85, 0);
 	PrintTwoDigitNumberAt(rtc_date, CHAR_SIZE_M, CHAR_SIZE_S, 107, 0);
-	PrintStringAt(F("20"), CHAR_SIZE_M, CHAR_SIZE_S, 85, 1);
+	PrintTwoDigitNumberAt(20, CHAR_SIZE_M, CHAR_SIZE_S, 85, 1);
 	PrintTwoDigitNumberAt(rtc_year, CHAR_SIZE_M, CHAR_SIZE_S, 107, 1);
 
 	DisplayRefresh();
@@ -758,7 +787,7 @@ void PrintCalculator()
 	printbitshift = 1;
 	if (isPlayString || isplay)
 	{
-		PrintStringAt(F("RUN"), CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
+		PrintStringAt(FPSTR(message_str), MSG_RUN, CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
 	}
 	else if (isMenu)
 	{
