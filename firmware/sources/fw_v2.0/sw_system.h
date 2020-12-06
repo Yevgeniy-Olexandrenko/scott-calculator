@@ -14,7 +14,7 @@ template<typename T> static T _abs(const T & x) { return x < 0 ? -x : x; }
 #define FONT_OFFSET '+'
 #define FONT_WIDTH  5
 
-const uint8_t font[] PROGMEM =
+static const uint8_t font[] PROGMEM =
 {
 	// No ascii signs below 43 ('+') to save memory (flash)
 	0x00, 0x00, 0x00, 0x00, 0x00, // + space
@@ -135,9 +135,21 @@ const uint8_t font[] PROGMEM =
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define CHAR_SIZE_S 1
-#define CHAR_SIZE_M 2
-#define CHAR_SIZE_L 4
+enum
+{
+	CHAR_SIZE_S = 1,
+	CHAR_SIZE_M = 2,
+	CHAR_SIZE_L = 4,
+};
+
+static uint8_t cw;
+static uint8_t ch;
+
+static void PrintCharSize(uint8_t width, uint8_t height)
+{
+	cw = width;
+	ch = height;
+}
 
 static uint8_t expand4bit(uint8_t b)
 {	
@@ -155,45 +167,45 @@ static uint8_t expand2bit(uint8_t b)
 	return b;
 }
 
-void PrintChar(uint8_t c, uint8_t w, uint8_t h)
+static void PrintChar(uint8_t c)
 {
-	for (uint8_t k = 0; k < h; k++)
+	for (uint8_t h = 0; h < ch; ++h)
 	{
-		if (k > 0) DisplayPosition(dx, ++dy);
-		for (uint8_t j = 0; j < FONT_WIDTH; j++)
+		if (h > 0) DisplayPosition(dx, ++dy);
+		for (uint8_t w = 0; w < FONT_WIDTH; ++w)
 		{
-			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + j]);
-			if (h == CHAR_SIZE_M)
-				bitmap = expand4bit((bitmap >> (k * 4)) & 0x0f); // Expand 0000abcd
-			else if (h == CHAR_SIZE_L)
-				bitmap = expand2bit((bitmap >> (k * 2)) & 0x03); // Expand 000000ab
-			DisplayWrite(bitmap, w);
+			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + w]);
+			if (ch == CHAR_SIZE_M)
+				bitmap = expand4bit((bitmap >> (h << 2)) & 0x0f); // Expand 0000abcd
+			else if (ch == CHAR_SIZE_L)
+				bitmap = expand2bit((bitmap >> (h << 1)) & 0x03); // Expand 000000ab
+			DisplayWrite(bitmap, cw);
 		}
 	}
 }
 
-void PrintCharAt(uint8_t c, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+static void PrintCharAt(uint8_t c, uint8_t x, uint8_t y)
 {
 	DisplayPosition(x, y);
-	PrintChar(c, w, h);
+	PrintChar(c);
 }
 
-void PrintStringAt(const __FlashStringHelper* s, uint8_t i, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+static void PrintStringAt(const __FlashStringHelper* s, uint8_t i, uint8_t x, uint8_t y)
 {
 	const char* ptr = (const char*)s;
 	uint8_t iw = pgm_read_byte(ptr++);
-	uint8_t ww = FONT_WIDTH * w + 1;
+	uint8_t ww = FONT_WIDTH * cw + 1;
 
 	for(ptr += (i * iw); iw > 0; --iw, ++ptr, x += ww)
 	{
-		PrintCharAt(pgm_read_byte(ptr), w, h, x, y);
+		PrintCharAt(pgm_read_byte(ptr), x, y);
 	}
 }
 
-void PrintTwoDigitAt(uint8_t number, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+static void PrintTwoDigitAt(uint8_t number, uint8_t x, uint8_t y)
 {
-	PrintCharAt('0' + _tens(number), w, h, x, y);
-	PrintCharAt('0' + _ones(number), w, h, x + FONT_WIDTH * w + 1, y);
+	PrintCharAt('0' + _tens(number), x, y);
+	PrintCharAt('0' + _ones(number), x + FONT_WIDTH * cw + 1, y);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

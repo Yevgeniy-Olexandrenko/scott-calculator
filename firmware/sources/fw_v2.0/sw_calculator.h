@@ -704,23 +704,23 @@ void _tanh()
 #define E_DIGIT1    (E_DIGIT2 - DIGIT_WIDTH)
 #define E_SIGN      (E_DIGIT1 - DIGIT_WIDTH)
 
-static void PrintFloat(float f, uint8_t h, uint8_t y)
+static void PrintFloat(float f, uint8_t y)
 {
 	if (isnan(f))
 	{
-		PrintStringAt(FPSTR(message_str), MSG_ERR, CHAR_SIZE_M, h, M_DIGIT_FST, y);
+		PrintStringAt(FPSTR(message_str), MSG_ERR, M_DIGIT_FST, y);
 	}
 	else
 	{
 		if (f < 0)
 		{
 			f = -f;
-			PrintCharAt('-', CHAR_SIZE_M, h, M_SIGN, y);
+			PrintCharAt('-', M_SIGN, y);
 		}
 
 		if (isinf(f))
 		{
-			PrintStringAt(FPSTR(message_str), MSG_INF, CHAR_SIZE_M, h, M_DIGIT_FST, y);
+			PrintStringAt(FPSTR(message_str), MSG_INF, M_DIGIT_FST, y);
 		}
 		else
 		{
@@ -753,31 +753,29 @@ static void PrintFloat(float f, uint8_t h, uint8_t y)
 				uint8_t ones = _ones(m);
 				if (ones || nonzero)
 				{
-					PrintCharAt('0' + ones, CHAR_SIZE_M, h, i, y);
+					PrintCharAt('0' + ones, i, y);
 					nonzero = true;
 				}
 			}
 
 			if (nonzero)
 			{
-				for (; --lead_z > 0; i -= DIGIT_WIDTH)
-					PrintCharAt('0', CHAR_SIZE_M, h, i, y);
-				PrintCharAt('.', CHAR_SIZE_M, h, i, y);
+				for (; --lead_z > 0; i -= DIGIT_WIDTH) PrintCharAt('0', i, y);
+				PrintCharAt('.', i, y);
 			}
 			
-			PrintCharAt('0', CHAR_SIZE_M, h, i -= POINT_WIDTH, y);
-			for (; int_dig--; m /= 10, i -= DIGIT_WIDTH)
-				PrintCharAt('0' + _ones(m), CHAR_SIZE_M, h, i, y);
+			PrintCharAt('0', i -= POINT_WIDTH, y);
+			for (; int_dig--; m /= 10, i -= DIGIT_WIDTH) PrintCharAt('0' + _ones(m), i, y);
 
 			if (e)
 			{
-				uint8_t s = _min((uint8_t)CHAR_SIZE_M, h);
+				PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
 				if (e < 0)
 				{
 					e = -e;
-					PrintCharAt('-', CHAR_SIZE_M, s, E_SIGN, y);
+					PrintCharAt('-', E_SIGN, y);
 				}
-				PrintTwoDigitAt(e, CHAR_SIZE_M, s, E_DIGIT1, y);
+				PrintTwoDigitAt(e, E_DIGIT1, y);
 			}
 		}
 	}
@@ -787,16 +785,20 @@ static void PrintClock()
 {
 	DisplayClear();
 
-	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 20, 0);
-	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 47, 0);
-	PrintTwoDigitAt(rtc_hours, CHAR_SIZE_M, CHAR_SIZE_L, 0, 0);
-	PrintTwoDigitAt(rtc_minutes, CHAR_SIZE_M, CHAR_SIZE_L, 27, 0);
-	PrintTwoDigitAt(rtc_seconds, CHAR_SIZE_M, CHAR_SIZE_L, 54, 0);
+	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_L);
+	PrintCharAt(':', 20, 0);
+	PrintCharAt(':', 47, 0);
+	PrintTwoDigitAt(rtc_hours, 0, 0);
+	PrintTwoDigitAt(rtc_minutes, 27, 0);
+	PrintTwoDigitAt(rtc_seconds, 54, 0);
 
-	PrintStringAt(FPSTR(month_str), rtc_month - 1, CHAR_SIZE_S, CHAR_SIZE_S, 85, 0);
-	PrintTwoDigitAt(rtc_date, CHAR_SIZE_M, CHAR_SIZE_S, 107, 0);
-	PrintTwoDigitAt(20, CHAR_SIZE_M, CHAR_SIZE_S, 85, 1);
-	PrintTwoDigitAt(rtc_year, CHAR_SIZE_M, CHAR_SIZE_S, 107, 1);
+	PrintCharSize(CHAR_SIZE_S, CHAR_SIZE_S);
+	PrintStringAt(FPSTR(month_str), rtc_month - 1, 85, 0);
+
+	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_S);
+	PrintTwoDigitAt(rtc_date, 107, 0);
+	PrintTwoDigitAt(20, 85, 1);
+	PrintTwoDigitAt(rtc_year, 107, 1);
 
 	DisplayRefresh();
 }
@@ -804,29 +806,29 @@ static void PrintClock()
 static void PrintCalculator()
 {
 	DisplayClear();
-	uint8_t h = CHAR_SIZE_M;
 
+	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
 	if (isPlayString || isTypePlaying)
 	{
-		PrintStringAt(FPSTR(message_str), MSG_RUN, CHAR_SIZE_M, CHAR_SIZE_M, 0, 2);
+		PrintStringAt(FPSTR(message_str), MSG_RUN, 0, 2);
 	}
 	else if (isMenu)
 	{
 		for (uint8_t i = 0; i < FUN_PER_LINE; ++i)
 		{
-			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, CHAR_SIZE_M, CHAR_SIZE_M, 48 * i, 2);
+			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, 48 * i, 2);
 		}
 	}
 	else
 	{
 		if (isTypeRecording)
-			PrintCharAt(CHAR_REC, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT1, 2);
+			PrintCharAt(CHAR_REC, E_DIGIT1, 2);
 		if (isShift)
-			PrintCharAt(CHAR_SHIFT, CHAR_SIZE_M, CHAR_SIZE_M, E_DIGIT2, 2);
-		h = CHAR_SIZE_L;
+			PrintCharAt(CHAR_SHIFT, E_DIGIT2, 2);
+		PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_L);
 	}
 
-	PrintFloat(stack.reg.X, h, 0);
+	PrintFloat(stack.reg.X, 0);
 	DisplayRefresh();
 }
 
