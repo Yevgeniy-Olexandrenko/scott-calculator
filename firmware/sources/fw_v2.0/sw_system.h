@@ -121,7 +121,7 @@ const uint8_t font[] PROGMEM =
 
 	0x71, 0x51, 0x5d, 0x45, 0x47, // Z
 	// No low case letters to save flash memory
-	// 47 * 5 = 235 bytes
+	// 48 * 5 = 240s bytes
 };
 
 ////////////////////////////////////////////////////////////////////////////////

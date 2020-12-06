@@ -1,27 +1,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
 #define CHARSHIFT '='	    // Character for shift symbol
 #define CHARREC   '@'       // Character for recording symbol
 
 #define DIMOUT_FRAMES 156   // Frames before display dim out (about 10 sec)
 #define POWEROFF_FRAMES 469 // Frames before power off (about 30 sec)
 
-#define STACK_SIZE 5		// Size of floatstack
 #define TINYNUMBER 1e-7	    // Number for rounding to 0
 #define MAXITERATE 100	    // Maximal number of Taylor series loops to iterate
 #define FKEYNR 3		    // 3 function keys
 #define KEY_DUMMY 0xff	    // Needed to enter key-loop and printstring
 
-#define EECONTRAST 0	    // EEPROM address of brightness (1 byte)
-#define EESTACK 1		    // EEPROM address of stack ((4+1)*4 bytes) (not used now!!!)
-#define EECMDKEY 21		    // EEPROM address of command keys (10 bytes)
-#define EECONST 31		    // EEPROM address of constants (10*4 bytes)
-#define EEREC 71		    // EEPROM address Starting EE-address for saving "type recorder"
-#define MAXREC 146		    // Number of record steps per slot
-#define MAXRECSLOT 3	    // Maximal slots to record
+#define TYPEREC_STEPS 70	// Number of record steps per slot
+#define TYPEREC_SLOTS 3	    // Number of slots for recording
 
-#define BITEXP 1		    // Bit for exp()
-#define BITSIN 2		    // Bit for sin()
+#define BITEXP  1		    // Bit for exp()
+#define BITSIN  2		    // Bit for sin()
 #define BITASIN 4		    // Bit for asin
 
 #define _min(a,b) ((a) < (b) ? (a) : (b))
@@ -30,13 +26,29 @@
 #define _to_rad(x) ((x) * (PI / 180))
 #define _to_deg(x) ((x) * (180 / PI))
 
+uint8_t EEMEM eeprom_brightness;
+uint8_t EEMEM eeprom_comandkey[10];
+float   EEMEM eeprom_constant[10];
+uint8_t EEMEM eeprom_typerecord[TYPEREC_SLOTS][TYPEREC_STEPS];
+
+typedef struct 
+{
+    union
+	{
+		struct { float X, Y, Z, T, M; } reg;
+		float arr[5];
+	};
+} Stack;
+
+//#define STACK_SIZE (sizeof(Stack) / sizeof(float))
+#define STACK_SIZE 5
+
 static uint8_t  inCalcMode;
 static uint8_t  key;                   // Holds entered key
 static uint8_t  oldkey;                // Old key - use for debouncing
-static float    stack[STACK_SIZE];     // Float stack (XYZT) and memory
+static Stack    stack;                 // Float stack (XYZT) and memory
 static uint8_t  isNewNumber = true;    // True if stack has to be lifted before entering a new number
 static uint8_t  ispushed;              // True if stack was already pushed by ENTER
-static uint8_t  isShowStack;
 static uint8_t  decimals;              // Number of decimals entered - used for input after decimal dot
 static uint8_t  isdot;                 // True if dot was pressed and decimals will be entered
 static uint8_t  isShift;               // true if f is pressed
@@ -45,12 +57,12 @@ static uint8_t  select;                // Selection number or playstring positio
 static uint8_t  isPlayString;          // True if string should be played
 static uint8_t  brightness;            // Contrast
 static uint8_t  isfirstrun = true;     // Allows first run of loop and printscreen without key query
-static uint16_t recptr;                // Pointer to recording step
-static uint8_t  recslot;               // Slot number for recording to EEPROM
+static uint8_t  recSlot;               // Slot number for recording
+static uint8_t  recIndex;              // Index of recording step
 static uint8_t  isrec;
 static uint8_t  isplay;                // True, if "Type Recorder" records or plays
 static float    sum[STACK_SIZE];	   // Memory to save statistic sums
-static float    shadow[STACK_SIZE];    // Shadow memory (buffer) for stack
+static Stack    shadow;                // Shadow memory (buffer) for stack
 static uint8_t  restore;               // Position of stack salvation (including mem)
 
 const char menu_str[] PROGMEM = 
@@ -127,20 +139,20 @@ char playbuf[40]; // Holds sii[]
 
 void ResetCalculator()
 {
-	brightness = EEPROM[EECONTRAST];
-	for (uint8_t i = 0; i < STACK_SIZE; i++) stack[i] = 0.f;
+	brightness = eeprom_read_byte(&eeprom_brightness);
+	for (uint8_t i = 0; i < STACK_SIZE; i++) stack.arr[i] = 0.f;
 }
 
 // Save stack to shadow buffer (including mem)
 void SaveStackToShadowBuffer()
 { 
-	memcpy(shadow, stack, STACK_SIZE * sizeof(float));
+	memcpy(&shadow, &stack, sizeof(Stack));
 }
 
 // Load higher stack from shadow buffer
 void LoadStackFromShadowBuffer(uint8_t pos)
 { 
-	memcpy(&stack[pos], &shadow[pos], (STACK_SIZE - pos) * sizeof(float));
+	memcpy(&stack.arr[pos], &shadow.arr[pos], (STACK_SIZE - pos) * sizeof(float));
 }
 
  // PUSH
@@ -150,7 +162,7 @@ void StackPush()
 	// stack[2] -> stack[3]
 	// stack[1] -> stack[2]
 	// stack[0] -> stack[1]
-	memmove(&stack[1], &stack[0], (STACK_SIZE - 2) * sizeof(float));
+	memmove(&stack.reg.Y, &stack.reg.X, (STACK_SIZE - 2) * sizeof(float));
 }
 
 // PULL
@@ -160,7 +172,7 @@ void StackPull()
 	// stack[2] -> stack[1]
 	// stack[3] -> stack[2]
 	// stack[4] -> not changed
-	memcpy(&stack[0], &stack[1], (STACK_SIZE - 2) * sizeof(float));
+	memcpy(&stack.reg.X, &stack.reg.Y, (STACK_SIZE - 2) * sizeof(float));
 }
 
 // PULLUPPER
@@ -170,24 +182,29 @@ void StackPullUpper()
 	// stack[2] -> stack[1]
 	// stack[3] -> stack[2]
 	// stack[4] -> not changed
-	memcpy(&stack[1], &stack[2], (STACK_SIZE - 3) * sizeof(float));
+	memcpy(&stack.reg.Y, &stack.reg.Z, (STACK_SIZE - 3) * sizeof(float));
 }
 
 void Store()
 {
-	stack[STACK_SIZE - 1] = stack[0];
+	stack.reg.M = stack.reg.X;
 }
 
 void Recall()
 {
 	StackPush();
-	stack[0] = stack[STACK_SIZE - 1];
+	stack.reg.X = stack.reg.M;
+}
+
+static bool IsStackXInRange(float min, float max)
+{ 
+	return (stack.reg.X >= min && stack.reg.X <= max);
 }
 
 // Checks, if stack[0] is between 0 and 9
-static uint8_t IsStackXFrom0to9()
-{ 
-	return (stack[0] >= 0 && stack[0] <= 9);
+static bool IsStackXInRange0to9()
+{
+	return IsStackXInRange(0, 9);
 }
 
 // PLAYSTRING
@@ -205,7 +222,7 @@ static void ReadBattery()
 {
 	StackPush();
 	uint16_t adc = ADCRead(_BV(MUX3) | _BV(MUX2), 10);
-	stack[0] = 1125.3f / adc;
+	stack.reg.X = 1125.3f / adc;
 }
 
 static void PowerOff()
@@ -216,25 +233,25 @@ static void PowerOff()
 
 void AddXY()
 {
-	stack[0] += stack[1];
+	stack.reg.X += stack.reg.Y;
 	StackPullUpper();
 }
 
 void SubYX()
 {
-	stack[0] = stack[1] - stack[0];
+	stack.reg.X = stack.reg.Y - stack.reg.X;
 	StackPullUpper();
 }
 
 void MulXY()
 {
-	stack[0] *= stack[1];
+	stack.reg.X *= stack.reg.Y;
 	StackPullUpper();
 }
 
 void DivYX()
 {
-	stack[0] = stack[1] / stack[0];
+	stack.reg.X = stack.reg.Y / stack.reg.X;
 	StackPullUpper();
 }
 
@@ -281,8 +298,8 @@ void _ce();
 void _ceclx();
 void ChangeSign();
 void ClearX();
-void _cmdkey();
-void _const();
+void UseCommandKey();
+void GetConstant();
 void SetBrightness();
 void _cos();
 void _cosh();
@@ -308,8 +325,8 @@ void _r2p();
 void _rec();
 void RotateStackUp();
 void RotateStackDown();
-void _setcmdkey();
-void _setconst();
+void SetCommandKey();
+void SetConstant();
 void _shadowload1();
 void _shadowload2();
 void _sin();
@@ -337,8 +354,8 @@ void (*dispatch[])() =
 	/* [@] [1] */ &Recall,
 	/* [A] [2] */ &Store,
 	/* [B] [3] */ &SubYX,
-	/* [C] [4] */ &_const,
-	/* [D] [5] */ &_cmdkey,
+	/* [C] [4] */ &GetConstant,
+	/* [D] [5] */ &UseCommandKey,
 	/* [E] [6] */ &MulXY,
 	/* [F] [7] */ &_menu,
 	/* [G] [8] */ &_sum,
@@ -375,8 +392,8 @@ void (*dispatch[])() =
 	/* [d] */ &_asinh,
 	/* [e] */ &_acosh,
 	/* [f] */ &_atanh,
-	/* [g] */ &_setconst,
-	/* [h] */ &_setcmdkey,
+	/* [g] */ &SetConstant,
+	/* [h] */ &SetCommandKey,
 	/* [i] */ &SetBrightness,
 	/* [j] */ &_rec,
 	/* [k] */ &_rec,
@@ -405,7 +422,7 @@ void _acosh()
 }
 void _asin()
 { // ASIN
-	stack[0] = _to_deg(_exp_sin_asin(stack[0], BITASIN));
+	stack.reg.X = _to_deg(_exp_sin_asin(stack.reg.X, BITASIN));
 }
 void _asinh()
 { // ASINH
@@ -422,39 +439,41 @@ void _atanh()
 
 void ChangeSign()
 { // CHS
-	stack[0] = -stack[0];
+	stack.reg.X = -stack.reg.X;
 	isNewNumber = true;
 }
 
 void ClearX()
 {
-	stack[0] = 0.f;
+	stack.reg.X = 0.f;
 	decimals = 0;
 	isdot = isNewNumber = false;
 }
 
-void _cmdkey()
-{ // CMDKEY
-	if (IsStackXFrom0to9)
+static void UseCommandKey()
+{
+	if (IsStackXInRange0to9())
 	{
-		uint8_t tmp = stack[0];
+		uint8_t index = stack.reg.X;
 		StackPull();
-		(*dispatch[EEPROM.read(EECMDKEY + tmp)])();
+		(*dispatch[eeprom_read_byte(&eeprom_comandkey[index])])();
 	}
 }
-void _const()
-{ // CONST
-	if (IsStackXFrom0to9)
-		EEPROM.get(EECONST + (uint8_t)stack[0], stack[0]);
+
+static void GetConstant()
+{
+	if (IsStackXInRange0to9())
+	{
+		stack.reg.X = eeprom_read_float(&eeprom_constant[(uint8_t)stack.reg.X]);
+	}
 }
 
 void SetBrightness()
 {
-	float X = stack[0];
-	if (X >= 0 && X <= 255)
+	if (IsStackXInRange(0, 255))
 	{
-		brightness = (uint8_t)stack[0];
-		EEPROM[EECONTRAST] = brightness;
+		brightness = (uint8_t)stack.reg.X;
+		eeprom_write_byte(&eeprom_brightness, brightness);
 	}
 }
 
@@ -474,7 +493,7 @@ void _dot()
 }
 void EnterExponent()
 { // EE
-	stack[0] = Pow10(stack[0]);
+	stack.reg.X = Pow10(stack.reg.X);
 	MulXY();
 	isNewNumber = true;
 }
@@ -485,7 +504,7 @@ void PushX()
 }
 void _exp()
 { // EXP
-	stack[0] = _exp_sin_asin(stack[0], BITEXP);
+	stack.reg.X = _exp_sin_asin(stack.reg.X, BITEXP);
 }
 void _gamma()
 { // GAMMA
@@ -493,11 +512,11 @@ void _gamma()
 }
 void _inv()
 { // INV
-	stack[0] = 1 / stack[0];
+	stack.reg.X = 1 / stack.reg.X;
 }
 void _ln()
 { // LN
-	stack[0] = log(stack[0]);
+	stack.reg.X = log(stack.reg.X);
 }
 void _lr()
 { // L.R.
@@ -528,22 +547,24 @@ void EnterDigit()
 { // NUM Numeric input (0...9)
 	_newnumber();
 	if (isdot)
-		stack[0] += (key - KEY_B3_0) / Pow10(++decimals); // Append decimal to number
+		stack.reg.X += (key - KEY_B3_0) / Pow10(++decimals); // Append decimal to number
 	else
 	{ // Append digit to number
-		stack[0] *= 10;
-		stack[0] += key - KEY_B3_0;
+		stack.reg.X *= 10;
+		stack.reg.X += key - KEY_B3_0;
 	}
 }
 void _p2r()
 { // P2R
 	PlayString(PSP2R);
 }
+
 void _recplay()
 { // Prepare variables for REC or PLAY
-	recslot = key - KEY_B2_1;
-	recptr = EEREC + recslot * MAXREC;
+	recSlot = key - KEY_B2_1;
+	recIndex = 0;
 }
+
 void _play()
 { // PLAY
 	_recplay();
@@ -579,28 +600,36 @@ void _rec()
 	_recplay();
 	isrec = true;
 }
-void RotateStackUp()
-{ // ROTup
+
+static void RotateStackUp()
+{
 	for (uint8_t i = 0; i < STACK_SIZE - 2; i++)
+	{
 		RotateStackDown();
-	
+	}
 }
-void RotateStackDown()
-{ // ROT
-	float tmp = stack[0];
+
+static void RotateStackDown()
+{
+	float tmp = stack.reg.X;
 	StackPull();
-	stack[STACK_SIZE - 2] = tmp;
-	isShowStack = true;
+	stack.reg.T = tmp;
 }
-void _setcmdkey()
-{ // SETCMDKEY
-	if (IsStackXFrom0to9)
-		EEPROM.write(EECMDKEY + (uint8_t)stack[0], (uint8_t)stack[1]);
+
+static void SetCommandKey()
+{
+	if (IsStackXInRange0to9())
+	{
+		eeprom_write_byte(&eeprom_comandkey[(uint8_t)stack.reg.X], (uint8_t)stack.reg.Y);
+	}
 }
-void _setconst()
-{ // SETCONST
-	if (IsStackXFrom0to9)
-		EEPROM.put(EECONST + (uint8_t)stack[0], stack[1]);
+
+static void SetConstant()
+{
+	if (IsStackXInRange0to9())
+	{
+		eeprom_write_float(&eeprom_constant[(uint8_t)stack.reg.X], stack.reg.Y);
+	}
 }
 
 void _shadowload1()
@@ -614,7 +643,7 @@ void _shadowload2()
 
 void _sin()
 { // SIN
-	stack[0] = _exp_sin_asin(_to_rad(stack[0]), BITSIN);
+	stack.reg.X = _exp_sin_asin(_to_rad(stack.reg.X), BITSIN);
 }
 void _sinh()
 { // SINH
@@ -623,10 +652,10 @@ void _sinh()
 
 void _sqrt()
 { 
-	//if (stack[0] != 0.0)
+	//if (stack.reg.X != 0.0)
 	//{
 		_ln();
-		stack[0] *= 0.5;
+		stack.reg.X *= 0.5;
 		_exp();
 	//}
 }
@@ -643,21 +672,19 @@ void _sum()
 }
 void _sum1()
 { // SUM addon
-	for (uint8_t i = 0; i < STACK_SIZE; i++)
-		sum[i] += stack[i];
+	for (uint8_t i = 0; i < STACK_SIZE; i++) sum[i] += stack.arr[i];
 	_sum2stack(); // Show n
 	Recall();
 }
 void _sum2stack()
 { // Copies sum[] to stack[] (including mem)
-	memmove(stack, sum, STACK_SIZE * sizeof(float));
+	memmove(stack.arr, sum, sizeof(Stack));
 }
 void SwapStackXY()
 { // SWAP
-	float tmp = stack[0];
-	stack[0] = stack[1];
-	stack[1] = tmp;
-	isShowStack = true;
+	float tmp = stack.reg.X;
+	stack.reg.X = stack.reg.Y;
+	stack.reg.Y = tmp;
 }
 void _tan()
 { // TAN
@@ -808,15 +835,7 @@ void PrintCalculator()
 	printbitshift = 0;
 	if (!isPlayString && !isplay)
 	{
-		if (isShowStack)
-		{
-			for (i = 0; i <= STACK_SIZE - 2; ++i)
-				PrintFloat(stack[STACK_SIZE - 2 - i], CHAR_SIZE_S, i);
-		}
-		else
-		{
-			PrintFloat(stack[0], h, 0);
-		}
+		PrintFloat(stack.reg.X, h, 0);
 	}
 
 	DisplayRefresh();
@@ -892,22 +911,23 @@ int main()
 
 			else if (isrec || isplay)
 			{ // ### Type recorder (else: playstring works inside play)
-				uint16_t maxptr = EEREC + (recslot + 1) * MAXREC;
 				if (isrec)
 				{ // Record keys and write to EEPPROM
-					if (key && recptr < maxptr)
-						EEPROM[recptr++] = key;
+					if (key && recIndex < TYPEREC_STEPS)
+					{
+						eeprom_write_byte(&eeprom_typerecord[recSlot][recIndex++], key);
+					}
 				}
 				else
-				{ // Read/play key from EEPROM
+				{
 					if (key == KEY_A3_C)
 					{ // Stop execution
 						isplay = false;
 						key = KEY_DUMMY;
 					}
-					key = EEPROM[recptr++];
+					key = eeprom_read_byte(&eeprom_typerecord[recSlot][recIndex++]);
 				}
-				if (key == KEY_A3_C || recptr >= maxptr)
+				if (key == KEY_A3_C || recIndex >= TYPEREC_STEPS)
 				{
 					isplay = isrec = false;
 					key = KEY_DUMMY;
@@ -922,7 +942,6 @@ int main()
 
 			if (key)
 			{
-				isShowStack = false;
 				if (key != KEY_DUMMY)
 				{
 					if (isMenu)

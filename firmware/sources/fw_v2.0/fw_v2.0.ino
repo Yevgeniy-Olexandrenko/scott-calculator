@@ -733,10 +733,10 @@
 #undef  F_CPU
 #define F_CPU 16000000UL // 16 MHz
 
+#include <avr/eeprom.h>  // Needed for saving data to EEPROM
 #include <avr/power.h>   // Needed for power management
 #include <avr/sleep.h>   // Needed for sleeping
 #include <util/delay.h>  // Needed for delays
-#include <EEPROM.h>      // Needed for saving data to EEPROM
 #include <math.h>        // Needed for some math constants
 
 #undef  FPSTR
