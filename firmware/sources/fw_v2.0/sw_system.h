@@ -33,7 +33,13 @@ const uint8_t font[] PROGMEM =
 	0x03, 0x01, 0x01, 0x01, 0x7f, // 7
 	0x7f, 0x49, 0x49, 0x49, 0x7f, // 8
 	0x4f, 0x49, 0x49, 0x49, 0x7f, // 9
-	0x00, 0x00, 0x00, 0x00, 0x00, // : space
+
+	0b00000000, // :
+	0b00110110,
+	0b00110110,
+	0b00000000,
+	0b00000000,
+
 	0x00, 0x1b, 0x04, 0x1b, 0x00, // ; raised x
 	0x00, 0x7f, 0x3e, 0x1c, 0x08, // < play
 	0x04, 0xbe, 0xbf, 0xbe, 0x04, // = shift sign
@@ -165,6 +171,18 @@ void PrintStringAt(const __FlashStringHelper* s, uint8_t w, uint8_t h, uint8_t x
 	{
 		PrintCharAt(ch, w, h, x, y);
 		x += ww;
+	}
+}
+
+void PrintStringAt(const __FlashStringHelper* s, uint8_t i, uint8_t w, uint8_t h, uint8_t x, uint8_t y)
+{
+	const char* ptr = (const char*)s;
+	uint8_t iw = pgm_read_byte(ptr++);
+	uint8_t ww = FONT_WIDTH * w + 1;
+
+	for(ptr += (i * iw); iw > 0; --iw, ++ptr, x += ww)
+	{
+		PrintCharAt(pgm_read_byte(ptr), w, h, x, y);
 	}
 }
 

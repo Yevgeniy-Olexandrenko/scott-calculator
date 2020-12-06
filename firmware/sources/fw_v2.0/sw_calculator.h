@@ -1,6 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 
-#define CHARSPACE ':'	    // Character for space symbol
 #define CHARSHIFT '='	    // Character for shift symbol
 #define CHARREC   '@'       // Character for recording symbol
 
@@ -31,26 +30,28 @@
 #define _to_rad(x) ((x) * (PI / 180))
 #define _to_deg(x) ((x) * (180 / PI))
 
-static uint8_t key;                                // Holds entered key
-static uint8_t oldkey;                             // Old key - use for debouncing
-static float   stack[STACK_SIZE];                  // Float stack (XYZT) and memory
-static uint8_t isNewNumber = true;                 // True if stack has to be lifted before entering a new number
-static uint8_t ispushed = false;                   // True if stack was already pushed by ENTER
-static uint8_t isShowStack = false;
-static uint8_t decimals = 0;                       // Number of decimals entered - used for input after decimal dot
-static uint8_t isdot = false;                      // True if dot was pressed and decimals will be entered
-static uint8_t isShift = false;                        // true if f is pressed
-static uint8_t isMenu = false;                     // True if menu demanded
-static uint8_t select = 0;                         // Selection number or playstring position
-static uint8_t isPlayString = false;               // True if string should be played
-static uint8_t brightness;                         // Contrast
-static uint8_t isfirstrun = true;                  // Allows first run of loop and printscreen without key query
-static uint16_t recptr = 0;                         // Pointer to recording step
-static uint8_t recslot = 0;                        // Slot number for recording to EEPROM
-static uint8_t isrec = false, isplay = false;      // True, if "Type Recorder" records or plays
-static float   sum[STACK_SIZE] = { 0.f };	       // Memory to save statistic sums
-static float   shadow[STACK_SIZE] = { 0.f };        // Shadow memory (buffer) for stack
-static uint8_t restore;                            // Position of stack salvation (including mem)
+static uint8_t  inCalcMode;
+static uint8_t  key;                   // Holds entered key
+static uint8_t  oldkey;                // Old key - use for debouncing
+static float    stack[STACK_SIZE];     // Float stack (XYZT) and memory
+static uint8_t  isNewNumber = true;    // True if stack has to be lifted before entering a new number
+static uint8_t  ispushed;              // True if stack was already pushed by ENTER
+static uint8_t  isShowStack;
+static uint8_t  decimals;              // Number of decimals entered - used for input after decimal dot
+static uint8_t  isdot;                 // True if dot was pressed and decimals will be entered
+static uint8_t  isShift;               // true if f is pressed
+static uint8_t  isMenu;                // True if menu demanded
+static uint8_t  select;                // Selection number or playstring position
+static uint8_t  isPlayString;          // True if string should be played
+static uint8_t  brightness;            // Contrast
+static uint8_t  isfirstrun = true;     // Allows first run of loop and printscreen without key query
+static uint16_t recptr;                // Pointer to recording step
+static uint8_t  recslot;               // Slot number for recording to EEPROM
+static uint8_t  isrec;
+static uint8_t  isplay;                // True, if "Type Recorder" records or plays
+static float    sum[STACK_SIZE];	   // Memory to save statistic sums
+static float    shadow[STACK_SIZE];    // Shadow memory (buffer) for stack
+static uint8_t  restore;               // Position of stack salvation (including mem)
 
 const char c00[] PROGMEM = ",X";  // Squareroot
 const char c01[] PROGMEM = "Y;";  // Raise to the power of
@@ -113,15 +114,10 @@ const char * const cmd[] PROGMEM =
 #define numberofcommands (sizeof(cmd) / sizeof(const char *))
 
 
-
-
-
-
-
-
-
-
-
+const char month_str[] PROGMEM = 
+	"\03"
+	"JAN" "FEB" "MAR" "APR" "MAY" "JUN"
+	"JUL" "AUG" "SEP" "OCT" "NOV" "DEC";
 
 // PLAYSTRINGS (Don't play a playstring!)
 #define PSCOS 0
@@ -725,7 +721,7 @@ void _tanh()
 #define E_DIGIT1    (E_DIGIT2 - DIGIT_WIDTH)
 #define E_SIGN      (E_DIGIT1 - DIGIT_WIDTH)
 
-void PrintFloat(float f, uint8_t h, uint8_t y)
+static void PrintFloat(float f, uint8_t h, uint8_t y)
 {
 	if (isnan(f))
 	{
@@ -780,20 +776,27 @@ void PrintFloat(float f, uint8_t h, uint8_t y)
 	}
 }
 
-void PrintScreen()
+static void PrintClock()
 {
 	DisplayFill(0x00);
 
-#if 0
-	RTCRead();
-	{
-		PrintTwoDigitNumberAt(rtc_hours, CHAR_SIZE_M, CHAR_SIZE_L, 0, 0);
-		PrintCharAt('.', CHAR_SIZE_M, CHAR_SIZE_L, 22, 0);
-		PrintTwoDigitNumberAt(rtc_minutes, CHAR_SIZE_M, CHAR_SIZE_L, 33, 0);
-		PrintCharAt('.', CHAR_SIZE_M, CHAR_SIZE_L, 55, 0);
-		PrintTwoDigitNumberAt(rtc_seconds, CHAR_SIZE_M, CHAR_SIZE_L, 66, 0);
-	}
-#else
+	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 20, 0);
+	PrintCharAt(':', CHAR_SIZE_M, CHAR_SIZE_L, 47, 0);
+	PrintTwoDigitNumberAt(rtc_hours, CHAR_SIZE_M, CHAR_SIZE_L, 0, 0);
+	PrintTwoDigitNumberAt(rtc_minutes, CHAR_SIZE_M, CHAR_SIZE_L, 27, 0);
+	PrintTwoDigitNumberAt(rtc_seconds, CHAR_SIZE_M, CHAR_SIZE_L, 54, 0);
+
+	PrintStringAt(FPSTR(month_str), rtc_month - 1, CHAR_SIZE_S, CHAR_SIZE_S, 85, 0);
+	PrintTwoDigitNumberAt(rtc_date, CHAR_SIZE_M, CHAR_SIZE_S, 107, 0);
+	PrintStringAt(F("20"), CHAR_SIZE_M, CHAR_SIZE_S, 85, 1);
+	PrintTwoDigitNumberAt(rtc_year, CHAR_SIZE_M, CHAR_SIZE_S, 107, 1);
+
+	DisplayRefresh();
+}
+
+void PrintCalculator()
+{
+	DisplayFill(0x00);
 
 	uint8_t i;
 	uint8_t h = CHAR_SIZE_M;
@@ -834,8 +837,6 @@ void PrintScreen()
 		}
 	}
 
-#endif	
-
 	DisplayRefresh();
 }
 
@@ -855,10 +856,11 @@ int main()
 
 	for (;;)
 	{
-		FrameSyncWait(); 
+		FrameSyncWait();
 
 		if (isfirstrun)
 		{
+			RTCWrite();
 			isfirstrun = false;
 			key = KEY_DUMMY;
 		}
@@ -871,112 +873,122 @@ int main()
 		if (key)
 		{
 			ResetFrameCounter();
+			inCalcMode = true;
 		}
 
 		if (frameCounter >= POWEROFF_FRAMES)
 		{
 			DeepSleep();
 			oldkey = KeyboardRead();
+			inCalcMode = !RTCRead();
 		}
 
 		DisplayBrightness(frameCounter < DIMOUT_FRAMES ? brightness : 0);
 
-		if (isPlayString)
-		{ // ### Play string
-			key = playbuf[select];
-			if (key == NULL)
-			{						  // Stop playstring
-				LoadStackFromShadowBuffer(restore); // Restore upper part of stack
-				isPlayString = false;
-				isNewNumber = true;
-				key = KEY_DUMMY;
-			}
-			else
-			{ // Go on for dispatching
-				if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
-				{ // New number (0-9,.)
+		if (inCalcMode)
+		{
+			if (isPlayString)
+			{ // ### Play string
+				key = playbuf[select];
+				if (key == NULL)
+				{						  // Stop playstring
+					LoadStackFromShadowBuffer(restore); // Restore upper part of stack
+					isPlayString = false;
 					isNewNumber = true;
-					ispushed = false;
-				}
-				select++;
-			}
-		}
-
-		else if (isrec || isplay)
-		{ // ### Type recorder (else: playstring works inside play)
-			uint16_t maxptr = EEREC + (recslot + 1) * MAXREC;
-			if (isrec)
-			{ // Record keys and write to EEPPROM
-				if (key && recptr < maxptr)
-					EEPROM[recptr++] = key;
-			}
-			else
-			{ // Read/play key from EEPROM
-				if (key == KEY_A3_C)
-				{ // Stop execution
-					isplay = false;
 					key = KEY_DUMMY;
 				}
-				key = EEPROM[recptr++];
+				else
+				{ // Go on for dispatching
+					if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
+					{ // New number (0-9,.)
+						isNewNumber = true;
+						ispushed = false;
+					}
+					select++;
+				}
 			}
-			if (key == KEY_A3_C || recptr >= maxptr)
+
+			else if (isrec || isplay)
+			{ // ### Type recorder (else: playstring works inside play)
+				uint16_t maxptr = EEREC + (recslot + 1) * MAXREC;
+				if (isrec)
+				{ // Record keys and write to EEPPROM
+					if (key && recptr < maxptr)
+						EEPROM[recptr++] = key;
+				}
+				else
+				{ // Read/play key from EEPROM
+					if (key == KEY_A3_C)
+					{ // Stop execution
+						isplay = false;
+						key = KEY_DUMMY;
+					}
+					key = EEPROM[recptr++];
+				}
+				if (key == KEY_A3_C || recptr >= maxptr)
+				{
+					isplay = isrec = false;
+					key = KEY_DUMMY;
+				}
+			}
+
+			if (key == KEY_A0_F)
 			{
-				isplay = isrec = false;
+				isShift ^= true;
 				key = KEY_DUMMY;
 			}
-		}
 
-		if (key == KEY_A0_F)
-		{
-			isShift ^= true;
-			key = KEY_DUMMY;
-		}
-
-		if (key)
-		{
-			isShowStack = false;
-			if (key != KEY_DUMMY)
+			if (key)
 			{
-				if (isMenu)
+				isShowStack = false;
+				if (key != KEY_DUMMY)
 				{
-					uint8_t limit = numberofcommands / FKEYNR - 1;
-					if (key == KEY_A1_E)
+					if (isMenu)
 					{
-						if (select > 0) select--; else select = limit;
+						uint8_t limit = numberofcommands / FKEYNR - 1;
+						if (key == KEY_A1_E)
+						{
+							if (select > 0) select--; else select = limit;
+						}
+						else if (key == KEY_A2_S)
+						{
+							if (select < limit) select++; else select = 0;
+						}
+						else if (key == KEY_A3_C)
+						{
+							isMenu = false;
+						}
+						else if (key >= KEY_B2_1 && key <= KEY_D2_3)
+						{
+							uint8_t index = select * FKEYNR + (key - KEY_B2_1);
+							(*dispatch[22 + index])();
+							isNewNumber = true;
+							isMenu = false;
+						}
 					}
-					else if (key == KEY_A2_S)
+
+					else if (isShift)
 					{
-						if (select < limit) select++; else select = 0;
-					}
-					else if (key == KEY_A3_C)
-					{
-						isMenu = false;
-					}
-					else if (key >= KEY_B2_1 && key <= KEY_D2_3)
-					{
-						uint8_t index = select * FKEYNR + (key - KEY_B2_1);
-						(*dispatch[22 + index])();
+						(*dispatch[6 + key - KEY_B3_0])();
+						isShift = ispushed = false;
 						isNewNumber = true;
-						isMenu = false;
+					}
+
+					else
+					{
+						if (key > KEY_D0_9) 
+							(*dispatch[key - KEY_D0_9])();
+						else
+							(*dispatch[0])();
 					}
 				}
-
-				else if (isShift)
-				{
-					(*dispatch[6 + key - KEY_B3_0])();
-					isShift = ispushed = false;
-					isNewNumber = true;
-				}
-
-				else
-				{
-					if (key > KEY_D0_9) 
-						(*dispatch[key - KEY_D0_9])();
-					else
-						(*dispatch[0])();
-				}
+				PrintCalculator();
 			}
-			PrintScreen();
+		}
+		else
+		{
+			RTCRead();
+			PrintClock();
 		}
 	}
 	return 0;
