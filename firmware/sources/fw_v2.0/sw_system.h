@@ -14,7 +14,7 @@ template<typename T> static T _abs(const T & x) { return x < 0 ? -x : x; }
 #define FONT_OFFSET '+'
 #define FONT_WIDTH  5
 
-static const uint8_t font[] PROGMEM =
+static uint8_t eeprom_font[] EEMEM =
 {
 	// No ascii signs below 43 ('+') to save memory (flash)
 	0x00, 0x00, 0x00, 0x00, 0x00, // + space
@@ -174,7 +174,7 @@ static void PrintChar(uint8_t c)
 		if (h > 0) DisplayPosition(dx, ++dy);
 		for (uint8_t w = 0; w < FONT_WIDTH; ++w)
 		{
-			uint8_t bitmap = pgm_read_byte(&font[FONT_WIDTH * (c - FONT_OFFSET) + w]);
+			uint8_t bitmap = eeprom_read_byte(&eeprom_font[FONT_WIDTH * (c - FONT_OFFSET) + w]);
 			if (ch == CHAR_SIZE_M)
 				bitmap = expand4bit((bitmap >> (h << 2)) & 0x0f); // Expand 0000abcd
 			else if (ch == CHAR_SIZE_L)

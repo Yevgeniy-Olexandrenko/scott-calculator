@@ -23,10 +23,10 @@
 #define _to_rad(x) ((x) * (PI / 180))
 #define _to_deg(x) ((x) * (180 / PI))
 
-uint8_t EEMEM eeprom_brightness;
-uint8_t EEMEM eeprom_comandkey[10];
-float   EEMEM eeprom_constant[10];
-uint8_t EEMEM eeprom_typerecord[TYPEREC_SLOTS][TYPEREC_STEPS];
+static uint8_t EEMEM eeprom_brightness = 0xFF;
+static uint8_t EEMEM eeprom_comandkey[10];
+static float   EEMEM eeprom_constant[10];
+static uint8_t EEMEM eeprom_typerecord[TYPEREC_SLOTS][TYPEREC_STEPS];
 
 typedef struct 
 {
