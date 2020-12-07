@@ -706,8 +706,11 @@ void _tanh()
 
 #define MODE_CHAR   (128 - (DIGIT_WIDTH - 1))
 
-static void PrintFloat(float f, uint8_t y)
+static void PrintStack(uint8_t i, uint8_t s, uint8_t y)
 {
+	float f = stack.arr[i];
+	PrintCharSize(CHAR_SIZE_M, s);
+
 	if (isnan(f))
 	{
 		PrintStringAt(FPSTR(message_str), MSG_ERR, M_DIGIT_FST, y);
@@ -749,7 +752,7 @@ static void PrintFloat(float f, uint8_t y)
 				for (uint8_t n = lead_z; n--; m /= 10);
 			}
 
-			uint8_t i = M_DIGIT_LST, nonzero = false;
+			i = M_DIGIT_LST; uint8_t nonzero = false;
 			for (fra_dig = DIGITS - lead_z - int_dig; fra_dig--; m /= 10, i -= DIGIT_WIDTH)
 			{
 				uint8_t ones = _ones(m);
@@ -771,7 +774,7 @@ static void PrintFloat(float f, uint8_t y)
 
 			if (e)
 			{
-				PrintCharSize(CHAR_SIZE_M, ch >> 1);
+				PrintCharSize(CHAR_SIZE_M, s >> 1);
 				if (e < 0)
 				{
 					e = -e;
@@ -808,14 +811,14 @@ static void PrintClock()
 static void PrintCalculator()
 {
 	DisplayClear();
-	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
 
+	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
 	if (isTypeRecording) PrintCharAt(CHAR_REC, MODE_CHAR, 2);
 	if (isTypePlaying) PrintCharAt(CHAR_PLAY, MODE_CHAR, 2);
 
 	if (isMenu)
 	{
-		PrintFloat(stack.reg.X, 0);
+		PrintStack(0, CHAR_SIZE_M, 0);
 		for (uint8_t i = 0; i < FUN_PER_LINE; ++i)
 		{
 			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, 48 * i, 2);
@@ -824,14 +827,14 @@ static void PrintCalculator()
 	else if (isShift)
 	{
 		PrintCharAt(CHAR_SHIFT, MODE_CHAR, 0);
-		PrintFloat(stack.reg.Y, 0);
-		PrintFloat(stack.reg.X, 2);
+		PrintStack(1, CHAR_SIZE_M, 0);
+		PrintStack(0, CHAR_SIZE_M, 2);
 	}
 	else
 	{
-		PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_L);
-		PrintFloat(stack.reg.X, 0);
+		PrintStack(0, CHAR_SIZE_L, 0);
 	}
+
 	DisplayRefresh();
 }
 
