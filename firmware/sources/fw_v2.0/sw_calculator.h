@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-#define CHAR_SHIFT '='	    // Character for shift symbol
-#define CHAR_REC   '@'       // Character for recording symbol
+#define CHAR_SHIFT '='
+#define CHAR_REC   '@'
+#define CHAR_PLAY  '<'
 
 #define DIMOUT_FRAMES 156   // Frames before display dim out (about 10 sec)
 #define POWEROFF_FRAMES 469 // Frames before power off (about 30 sec)
@@ -78,10 +77,9 @@ const char menu_str[] PROGMEM =
 #define numberofcommands 33
 
 const char message_str[] PROGMEM =
-	"\03" "ERR" "INF" "RUN";
+	"\03" "ERR" "INF";
 #define MSG_ERR 0
 #define MSG_INF 1
-#define MSG_RUN 2
 
 const char month_str[] PROGMEM = 
 	"\03"
@@ -696,13 +694,17 @@ void _tanh()
 #define DIGIT_WIDTH (FONT_WIDTH * CHAR_SIZE_M + 1)
 #define POINT_WIDTH (DIGIT_WIDTH - 6)
 
+#define MODE_CHAR   (128 - (DIGIT_WIDTH - 1))
+
 #define M_SIGN      (0)
 #define M_DIGIT_FST (M_SIGN + DIGIT_WIDTH)
 #define M_DIGIT_LST (M_DIGIT_FST + ((DIGITS - 1) * DIGIT_WIDTH) + POINT_WIDTH)
 
-#define E_DIGIT2    (128 - (DIGIT_WIDTH - 1))
+#define E_DIGIT2    (MODE_CHAR - DIGIT_WIDTH)
 #define E_DIGIT1    (E_DIGIT2 - DIGIT_WIDTH)
 #define E_SIGN      (E_DIGIT1 - DIGIT_WIDTH)
+
+#define MODE_CHAR   (128 - (DIGIT_WIDTH - 1))
 
 static void PrintFloat(float f, uint8_t y)
 {
@@ -769,7 +771,7 @@ static void PrintFloat(float f, uint8_t y)
 
 			if (e)
 			{
-				PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
+				PrintCharSize(CHAR_SIZE_M, ch >> 1);
 				if (e < 0)
 				{
 					e = -e;
@@ -806,29 +808,30 @@ static void PrintClock()
 static void PrintCalculator()
 {
 	DisplayClear();
-
 	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
-	if (isPlayString || isTypePlaying)
+
+	if (isTypeRecording) PrintCharAt(CHAR_REC, MODE_CHAR, 2);
+	if (isTypePlaying) PrintCharAt(CHAR_PLAY, MODE_CHAR, 2);
+
+	if (isMenu)
 	{
-		PrintStringAt(FPSTR(message_str), MSG_RUN, 0, 2);
-	}
-	else if (isMenu)
-	{
+		PrintFloat(stack.reg.X, 0);
 		for (uint8_t i = 0; i < FUN_PER_LINE; ++i)
 		{
 			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, 48 * i, 2);
 		}
 	}
+	else if (isShift)
+	{
+		PrintCharAt(CHAR_SHIFT, MODE_CHAR, 0);
+		PrintFloat(stack.reg.Y, 0);
+		PrintFloat(stack.reg.X, 2);
+	}
 	else
 	{
-		if (isTypeRecording)
-			PrintCharAt(CHAR_REC, E_DIGIT1, 2);
-		if (isShift)
-			PrintCharAt(CHAR_SHIFT, E_DIGIT2, 2);
 		PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_L);
+		PrintFloat(stack.reg.X, 0);
 	}
-
-	PrintFloat(stack.reg.X, 0);
 	DisplayRefresh();
 }
 
