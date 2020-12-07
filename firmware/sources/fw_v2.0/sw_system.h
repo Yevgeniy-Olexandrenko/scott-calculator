@@ -233,7 +233,7 @@ static void FrameSyncDisable()
 static void FrameSyncWait()
 {
 	frameWaiting = true;
-	while (frameWaiting) ExecuteSleep(SLEEP_MODE_IDLE);
+	while (frameWaiting) PowerIdle();
 }
 
 ISR(WDT_vect)
@@ -248,9 +248,7 @@ static void DeepSleep()
 
 	DisplayTurnOff();
 	FrameSyncDisable();
-	
-	ExecuteSleep(SLEEP_MODE_PWR_DOWN);
-
+	PowerDown();
 	FrameSyncEnable();
 	DisplayTurnOn();
 }

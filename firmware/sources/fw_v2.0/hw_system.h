@@ -47,16 +47,26 @@ static void WDTInit(uint8_t mode, uint8_t prescaler)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExecuteSleep(uint8_t mode)
-{ 	
-	power_all_disable();
+static void execute_sleeping(uint8_t mode)
+{
 	set_sleep_mode(mode);
+	power_usi_enable();
+	power_adc_enable();
 	sleep_enable();
 	sleep_cpu();
-
-	// sleeping here...
-
 	sleep_disable();
-	power_usi_enable(); // Power On USI for I2C communication
-	power_adc_enable(); // Power On ADC for analog keyboard reading
+	power_usi_enable();
+	power_adc_enable();
+}
+
+static void PowerIdle()
+{ 	
+	execute_sleeping(SLEEP_MODE_IDLE);
+}
+
+static void PowerDown()
+{
+	power_timer1_disable();
+	execute_sleeping(SLEEP_MODE_PWR_DOWN);
+	power_timer1_enable(); 
 }
