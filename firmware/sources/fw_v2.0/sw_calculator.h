@@ -709,7 +709,7 @@ void _tanh()
 
 #define MODE_CHAR   (128 - (DIGIT_WIDTH - 1))
 
-static void PrintStack(uint8_t i, uint8_t s, uint8_t y)
+static void PrintStack(uint8_t i, uint8_t d, uint8_t s, uint8_t y)
 {
 	float f = stack.arr[i];
 	PrintCharSize(CHAR_SIZE_M, s);
@@ -819,9 +819,10 @@ static void PrintCalculator()
 	if (isTypeRecording) PrintCharAt(CHAR_REC, MODE_CHAR, 2);
 	if (isTypePlaying) PrintCharAt(CHAR_PLAY, MODE_CHAR, 2);
 
+	uint8_t d = isNewNumber ? 0 : decimals;
 	if (isMenu)
 	{
-		PrintStack(0, CHAR_SIZE_M, 0);
+		PrintStack(0, d, CHAR_SIZE_M, 0);
 		for (uint8_t i = 0; i < FUN_PER_LINE; ++i)
 		{
 			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, 48 * i, 2);
@@ -830,12 +831,12 @@ static void PrintCalculator()
 	else if (isShift)
 	{
 		PrintCharAt(CHAR_SHIFT, MODE_CHAR, 0);
-		PrintStack(1, CHAR_SIZE_M, 0);
-		PrintStack(0, CHAR_SIZE_M, 2);
+		PrintStack(1, 0, CHAR_SIZE_M, 0);
+		PrintStack(0, d, CHAR_SIZE_M, 2);
 	}
 	else
 	{
-		PrintStack(0, CHAR_SIZE_L, 0);
+		PrintStack(0, d, CHAR_SIZE_L, 0);
 	}
 
 	DisplayRefresh();
