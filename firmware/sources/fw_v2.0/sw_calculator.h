@@ -29,6 +29,7 @@ static uint8_t EEMEM eeprom_typerecord[TYPEREC_SLOTS][TYPEREC_STEPS];
 
 typedef struct 
 {
+	enum { X, Y, Z, T, M };
     union
 	{
 		struct { float X, Y, Z, T, M; } reg;
@@ -376,16 +377,15 @@ void Recall()
 	stack.reg.X = stack.reg.M;
 }
 
-static bool IsStackRegInRange(uint8_t i, float min, float max)
-{ 
-	if (stack.arr[i] >= min && stack.arr[i] <= max) return true;
-	stack.reg.X = NAN;
-	return false;
-}
-
-static bool IsStackRegInRange0to9(uint8_t i)
+static bool GetIfStackRegInRange(uint8_t i, uint8_t min, uint8_t max, uint8_t & dest)
 {
-	return IsStackRegInRange(i, 0, 9);
+	if (stack.arr[i] >= min && stack.arr[i] <= max)
+	{
+		dest = (uint8_t)stack.arr[i];
+		return true;
+	}
+	stack.arr[i] = NAN;
+	return false;
 }
 
 // PLAYSTRING
@@ -634,9 +634,9 @@ void ClearX()
 
 static void UseCommandKey()
 {
-	if (IsStackRegInRange0to9(0))
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
 	{
-		uint8_t index = stack.reg.X;
 		StackPull();
 		(*dispatch[eeprom_read_byte(&eeprom_comandkey[index])])();
 	}
@@ -644,18 +644,44 @@ static void UseCommandKey()
 
 static void GetConstant()
 {
-	if (IsStackRegInRange0to9(0))
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
 	{
-		stack.reg.X = eeprom_read_float(&eeprom_constant[(uint8_t)stack.reg.X]);
+		stack.reg.X = eeprom_read_float(&eeprom_constant[index]);
 	}
 }
 
-void SetBrightness()
+static void SetBrightness()
 {
-	if (IsStackRegInRange(0, 0, 255))
+	if (GetIfStackRegInRange(Stack::X, 0, 255, brightness))
 	{
-		brightness = (uint8_t)stack.reg.X;
 		eeprom_write_byte(&eeprom_brightness, brightness);
+	}
+}
+
+static void SetTime()
+{
+	if (RTCRead())
+	{
+		if (GetIfStackRegInRange(Stack::Z, 0, 23, rtc_hours) &&
+			GetIfStackRegInRange(Stack::Y, 0, 59, rtc_minutes) &&
+			GetIfStackRegInRange(Stack::X, 0, 59, rtc_seconds))
+		{
+			RTCWrite();
+		}
+	}
+}
+
+static void SetDate()
+{
+	if (RTCRead())
+	{
+		if (GetIfStackRegInRange(Stack::Z, 1, 31, rtc_date) &&
+			GetIfStackRegInRange(Stack::Y, 1, 12, rtc_month) &&
+			GetIfStackRegInRange(Stack::X, 0, 99, rtc_year))
+		{
+			RTCWrite();
+		}
 	}
 }
 
@@ -803,17 +829,19 @@ static void RotateStackDown()
 
 static void SetCommandKey()
 {
-	if (IsStackRegInRange0to9(0))
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
 	{
-		eeprom_write_byte(&eeprom_comandkey[(uint8_t)stack.reg.X], (uint8_t)stack.reg.Y);
+		eeprom_write_byte(&eeprom_comandkey[index], (uint8_t)stack.reg.Y);
 	}
 }
 
 static void SetConstant()
 {
-	if (IsStackRegInRange0to9(0))
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
 	{
-		eeprom_write_float(&eeprom_constant[(uint8_t)stack.reg.X], stack.reg.Y);
+		eeprom_write_float(&eeprom_constant[index], stack.reg.Y);
 	}
 }
 
@@ -901,22 +929,11 @@ static void PrintStack(uint8_t i, int8_t d, uint8_t s, uint8_t y)
 	float f = stack.arr[i];
 	PrintCharSize(CHAR_SIZE_M, s);
 
-	if (isnan(f))
-	{
-		PrintStringAt(FPSTR(message_str), MSG_ERR, M_DIGIT_FST, y);
-	}
+	if (isnan(f)) { PrintStringAt(FPSTR(message_str), MSG_ERR, M_DIGIT_FST, y);	}
 	else
 	{
-		if (f < 0)
-		{
-			f = -f;
-			PrintCharAt('-', M_SIGN, y);
-		}
-
-		if (isinf(f))
-		{
-			PrintStringAt(FPSTR(message_str), MSG_INF, M_DIGIT_FST, y);
-		}
+		if (f < 0) { f = -f; PrintCharAt('-', M_SIGN, y); }
+		if (isinf(f)) {	PrintStringAt(FPSTR(message_str), MSG_INF, M_DIGIT_FST, y); }
 		else
 		{
 			int8_t e = (int8_t)(log(f) / log(10.f));
@@ -967,11 +984,7 @@ static void PrintStack(uint8_t i, int8_t d, uint8_t s, uint8_t y)
 			if (e)
 			{
 				PrintCharSize(CHAR_SIZE_M, s >> 1);
-				if (e < 0)
-				{
-					e = -e;
-					PrintCharAt('-', E_SIGN, y);
-				}
+				if (e < 0) { e = -e; PrintCharAt('-', E_SIGN, y); }
 				PrintTwoDigitAt(e, E_DIGIT1, y);
 			}
 		}
@@ -1007,25 +1020,27 @@ static void PrintCalculator()
 	PrintCharSize(CHAR_SIZE_M, CHAR_SIZE_M);
 	if (isTypeRecording) PrintCharAt(CHAR_REC, MODE_CHAR, 2);
 	if (isTypePlaying) PrintCharAt(CHAR_PLAY, MODE_CHAR, 2);
+	if (isShift) PrintCharAt(CHAR_SHIFT, MODE_CHAR, 0);
 
 	uint8_t d = isNewNumber ? 0 : decimals;
+	
 	if (isMenu)
 	{
-		PrintStack(0, d, CHAR_SIZE_M, 0);
+		
 		for (uint8_t i = 0; i < MENU_OPS_PER_LINE; ++i)
 		{
 			PrintStringAt(FPSTR(menu_str), select * MENU_OPS_PER_LINE + i, 48 * i, 2);
 		}
+		PrintStack(Stack::X, d, CHAR_SIZE_M, 0);
 	}
 	else if (isShift)
 	{
-		PrintCharAt(CHAR_SHIFT, MODE_CHAR, 0);
-		PrintStack(1, 0, CHAR_SIZE_M, 0);
-		PrintStack(0, d, CHAR_SIZE_M, 2);
+		PrintStack(Stack::Y, 0, CHAR_SIZE_M, 0);
+		PrintStack(Stack::X, d, CHAR_SIZE_M, 2);
 	}
 	else
 	{
-		PrintStack(0, d, CHAR_SIZE_L, 0);
+		PrintStack(Stack::X, d, CHAR_SIZE_L, 0);
 	}
 
 	DisplayRefresh();
@@ -1044,6 +1059,11 @@ int main()
 	DisplayTurnOn();
 	FrameSyncEnable();
 	ResetCalculator();
+
+#if 0
+	SetTime();
+	SetDate();
+#endif
 
 	for (;;)
 	{
