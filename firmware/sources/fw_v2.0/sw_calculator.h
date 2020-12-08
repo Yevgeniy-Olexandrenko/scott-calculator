@@ -483,8 +483,11 @@ void _cosh()
 
 void _dot()
 {
-	_newnumber();
-	decimals = 1;
+	if(!decimals)
+	{
+		_newnumber();
+		decimals = 1;
+	}
 }
 void EnterExponent()
 { // EE
