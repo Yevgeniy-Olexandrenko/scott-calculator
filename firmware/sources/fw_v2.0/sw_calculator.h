@@ -9,7 +9,7 @@
 
 #define TINYNUMBER 1e-7	    // Number for rounding to 0
 #define MAXITERATE 100	    // Maximal number of Taylor series loops to iterate
-#define FUN_PER_LINE 3		// 3 function keys
+#define MENU_OPS_PER_LINE 3		// 3 function keys
 #define KEY_DUMMY 0xff	    // Needed to enter key-loop and printstring
 
 #define TYPEREC_STEPS 70	// Number of record steps per slot
@@ -73,7 +73,7 @@ const char menu_str[] PROGMEM =
 	"CST" "CMD" "BRI"  // Set constant key, Set command key, Set display brightness
 	"@1+" "@2+" "@3+"  // Record user keys
 	"<1+" "<2+" "<3+"; // Play user keys
-#define numberofcommands 33
+#define NUM_OF_MENU_OPS 33
 
 const char message_str[] PROGMEM =
 	"\03" "ERR" "INF";
@@ -376,15 +376,16 @@ void Recall()
 	stack.reg.X = stack.reg.M;
 }
 
-static bool IsStackXInRange(float min, float max)
+static bool IsStackRegInRange(uint8_t i, float min, float max)
 { 
-	return (stack.reg.X >= min && stack.reg.X <= max);
+	if (stack.arr[i] >= min && stack.arr[i] <= max) return true;
+	stack.reg.X = NAN;
+	return false;
 }
 
-// Checks, if stack[0] is between 0 and 9
-static bool IsStackXInRange0to9()
+static bool IsStackRegInRange0to9(uint8_t i)
 {
-	return IsStackXInRange(0, 9);
+	return IsStackRegInRange(i, 0, 9);
 }
 
 // PLAYSTRING
@@ -633,7 +634,7 @@ void ClearX()
 
 static void UseCommandKey()
 {
-	if (IsStackXInRange0to9())
+	if (IsStackRegInRange0to9(0))
 	{
 		uint8_t index = stack.reg.X;
 		StackPull();
@@ -643,7 +644,7 @@ static void UseCommandKey()
 
 static void GetConstant()
 {
-	if (IsStackXInRange0to9())
+	if (IsStackRegInRange0to9(0))
 	{
 		stack.reg.X = eeprom_read_float(&eeprom_constant[(uint8_t)stack.reg.X]);
 	}
@@ -651,7 +652,7 @@ static void GetConstant()
 
 void SetBrightness()
 {
-	if (IsStackXInRange(0, 255))
+	if (IsStackRegInRange(0, 0, 255))
 	{
 		brightness = (uint8_t)stack.reg.X;
 		eeprom_write_byte(&eeprom_brightness, brightness);
@@ -802,7 +803,7 @@ static void RotateStackDown()
 
 static void SetCommandKey()
 {
-	if (IsStackXInRange0to9())
+	if (IsStackRegInRange0to9(0))
 	{
 		eeprom_write_byte(&eeprom_comandkey[(uint8_t)stack.reg.X], (uint8_t)stack.reg.Y);
 	}
@@ -810,7 +811,7 @@ static void SetCommandKey()
 
 static void SetConstant()
 {
-	if (IsStackXInRange0to9())
+	if (IsStackRegInRange0to9(0))
 	{
 		eeprom_write_float(&eeprom_constant[(uint8_t)stack.reg.X], stack.reg.Y);
 	}
@@ -1011,9 +1012,9 @@ static void PrintCalculator()
 	if (isMenu)
 	{
 		PrintStack(0, d, CHAR_SIZE_M, 0);
-		for (uint8_t i = 0; i < FUN_PER_LINE; ++i)
+		for (uint8_t i = 0; i < MENU_OPS_PER_LINE; ++i)
 		{
-			PrintStringAt(FPSTR(menu_str), select * FUN_PER_LINE + i, 48 * i, 2);
+			PrintStringAt(FPSTR(menu_str), select * MENU_OPS_PER_LINE + i, 48 * i, 2);
 		}
 	}
 	else if (isShift)
@@ -1078,19 +1079,19 @@ int main()
 		if (inCalcMode)
 		{
 			if (isPlayString)
-			{ // ### Play string
+			{
 				key = playbuf[select];
 				if (key == NULL)
-				{						  // Stop playstring
-					LoadStackFromShadowBuffer(restore); // Restore upper part of stack
+				{
+					LoadStackFromShadowBuffer(restore);
 					isPlayString = false;
 					isNewNumber = true;
 					key = KEY_DUMMY;
 				}
 				else
-				{ // Go on for dispatching
+				{
 					if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
-					{ // New number (0-9,.)
+					{
 						isNewNumber = true;
 						ispushed = false;
 					}
@@ -1099,9 +1100,9 @@ int main()
 			}
 
 			else if (isTypeRecording || isTypePlaying)
-			{ // ### Type recorder (else: playstring works inside play)
+			{
 				if (isTypeRecording)
-				{ // Record keys and write to EEPPROM
+				{
 					if (key && recIndex < TYPEREC_STEPS)
 					{
 						eeprom_write_byte(&eeprom_typerecord[recSlot][recIndex++], key);
@@ -1110,7 +1111,7 @@ int main()
 				else
 				{
 					if (key == KEY_A3_C)
-					{ // Stop execution
+					{
 						isTypePlaying = false;
 						key = KEY_DUMMY;
 					}
@@ -1135,7 +1136,7 @@ int main()
 				{
 					if (isMenu)
 					{
-						uint8_t limit = numberofcommands / FUN_PER_LINE - 1;
+						uint8_t limit = NUM_OF_MENU_OPS / MENU_OPS_PER_LINE - 1;
 						if (key == KEY_A1_E)
 						{
 							if (select > 0) select--; else select = limit;
@@ -1150,7 +1151,7 @@ int main()
 						}
 						else if (key >= KEY_B2_1 && key <= KEY_D2_3)
 						{
-							uint8_t index = select * FUN_PER_LINE + (key - KEY_B2_1);
+							uint8_t index = select * MENU_OPS_PER_LINE + (key - KEY_B2_1);
 							(*dispatch[22 + index])();
 							isNewNumber = true;
 							isMenu = false;
