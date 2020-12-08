@@ -46,7 +46,6 @@ static Stack    stack;                 // Float stack (XYZT) and memory
 static uint8_t  isNewNumber = true;    // True if stack has to be lifted before entering a new number
 static uint8_t  ispushed;              // True if stack was already pushed by ENTER
 static uint8_t  decimals;              // Number of decimals entered - used for input after decimal dot
-static uint8_t  isdot;                 // True if dot was pressed and decimals will be entered
 static uint8_t  isShift;               // true if f is pressed
 static uint8_t  isMenu;                // True if menu demanded
 static uint8_t  select;                // Selection number or playstring position
@@ -210,7 +209,8 @@ void PlayString(uint8_t slot)
 	strcpy_P(playbuf, (char *)pgm_read_word(&(pstable[slot])));
 	select = 0;
 	isNewNumber = isPlayString = true;
-	ispushed = isdot = false;
+	ispushed = false;
+	decimals = 0;
 }
 
 static void ReadBattery()
@@ -441,8 +441,8 @@ void ChangeSign()
 void ClearX()
 {
 	stack.reg.X = 0.f;
+	isNewNumber = false;
 	decimals = 0;
-	isdot = isNewNumber = false;
 }
 
 static void UseCommandKey()
@@ -484,7 +484,7 @@ void _cosh()
 void _dot()
 {
 	_newnumber();
-	isdot = true;
+	decimals = 1;
 }
 void EnterExponent()
 { // EE
@@ -541,8 +541,8 @@ void _nop() {} // NOP - no operation
 void EnterDigit()
 { // NUM Numeric input (0...9)
 	_newnumber();
-	if (isdot)
-		stack.reg.X += (key - KEY_B3_0) / Pow10(++decimals); // Append decimal to number
+	if (decimals)
+		stack.reg.X += (key - KEY_B3_0) / Pow10(decimals++); // Append decimal to number
 	else
 	{ // Append digit to number
 		stack.reg.X *= 10;
