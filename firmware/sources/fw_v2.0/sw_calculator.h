@@ -865,29 +865,7 @@ int main()
 		else
 		{
 			key = KeyboardRead();
-			if (key == oldkey) 
-			{
-				key = NULL;
-			}
-			else
-			{
-				if (key)
-				{
-					for (int8_t i = 0; i < 16; ++i)
-					{
-						if(pgm_read_byte(&key_code[i]) == key)
-						{
-							SoundPlay(i, 5);
-							break;
-						}
-					}					
-				}
-				else
-				{
-					SoundStop();
-				}
-				oldkey = key;
-			}
+			if (key == oldkey) key = NULL; else oldkey = key;
 		}
 
 		if (key)

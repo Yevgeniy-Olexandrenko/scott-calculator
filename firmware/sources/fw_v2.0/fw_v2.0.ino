@@ -754,7 +754,6 @@ class __FlashStringHelper;
 #include "hw_keyboard.h"
 #include "hw_usi_i2c.h"
 #include "hw_display.h"
-#include "hw_sound.h"
 #include "hw_clock.h"
 #include "sw_system.h"
 #include "sw_calculator.h"

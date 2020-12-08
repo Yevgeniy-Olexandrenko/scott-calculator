@@ -50,10 +50,10 @@ static void WDTInit(uint8_t mode, uint8_t prescaler)
 static void execute_sleeping(uint8_t mode)
 {
 	set_sleep_mode(mode);
-	power_usi_enable();
-	power_adc_enable();
+	power_all_disable();
 	sleep_enable();
 	sleep_cpu();
+
 	sleep_disable();
 	power_usi_enable();
 	power_adc_enable();
@@ -66,7 +66,5 @@ static void PowerIdle()
 
 static void PowerDown()
 {
-	power_timer1_disable();
 	execute_sleeping(SLEEP_MODE_PWR_DOWN);
-	power_timer1_enable(); 
 }
