@@ -106,18 +106,204 @@ const char month_str[] PROGMEM =
 #define PSSTAT 16
 #define PSLR 17
 
-const char s00[] PROGMEM = "90L[";                                 // COS
-const char s01[] PROGMEM = "[==E>1LOH";                            // TAN
-const char s02[] PROGMEM = "^>90L";                                // ACOS
-const char s03[] PROGMEM = "===E1LOQE^";                           // ATAN
-const char s04[] PROGMEM = ">I=1LIMIP>1LKH";                       // PV
-const char s05[] PROGMEM = "1L===12EI10EQBQL1RHIP2:506628KOHE";    // GAMMA
-const char s06[] PROGMEM = "R=Q>L2H";                              // SINH
-const char s07[] PROGMEM = "R=QL2H";                               // COSH
-const char s08[] PROGMEM = "2ER1B=2LH";                            // TANH
-const char s09[] PROGMEM = "==E1LOLS";                             // ASINH
-const char s10[] PROGMEM = "==E1BOLS";                             // ACOSH
-const char s11[] PROGMEM = "==1LI>1LHOS";                          // ATANH
+#define OP_DOT  ":"
+#define OP_CLRX ";"
+#define OP_ENEX "<"
+#define OP_PUSH "="
+#define OP_SIGN ">"
+
+#define OP_BAT  "?"
+#define OP_RCL  "@"
+#define OP_STO  "A"
+#define OP_SUB  "B"
+#define OP_CST  "C"
+#define OP_CMD  "D"
+#define OP_MUL  "E"
+#define OP_MENU "F"
+#define OP_SUM  "G"
+#define OP_DIV  "H"
+#define OP_SWAP "I"
+#define OP_POFF "J"
+#define OP_ROTU "K"
+#define OP_ADD  "L"
+#define OP_ROTD "M"
+#define OP_NOP  "N"
+
+#define OP_SQRT "O"
+#define OP_POW  "P"
+#define OP_INV  "Q"
+#define OP_EXP  "R"
+#define OP_LN   "S"
+#define OP_GAMM "T"
+#define OP_R2P  "U"
+#define OP_P2R  "V"
+#define OP_PV   "W"
+#define OP_ND   "X"
+#define OP_STAT "Y"
+#define OP_LR   "Z"
+#define OP_SIN  "["
+#define OP_COS  "\\"
+#define OP_TAN  "]"
+#define OP_ASIN "^"
+#define OP_ACOS "_"
+#define OP_ATAN "`"
+#define OP_SINH "a"
+#define OP_COSH "b"
+#define OP_TANH "c"
+#define OP_ASNH "d"
+#define OP_ACSH "e"
+#define OP_ATNH "f"
+//
+
+//const char s00[] PROGMEM = "90L[";                                 // COS
+const char s00[] PROGMEM = 
+	"90"
+	OP_ADD
+	OP_SIN;
+
+//const char s01[] PROGMEM = "[==E>1LOH";                            // TAN
+const char s01[] PROGMEM = 
+	OP_SIN
+	OP_PUSH
+	OP_PUSH
+	OP_MUL
+	OP_SIGN
+	"1"
+	OP_ADD
+	OP_SQRT
+	OP_DIV;
+
+//const char s02[] PROGMEM = "^>90L";                                // ACOS
+const char s02[] PROGMEM = 
+	OP_ASIN
+	OP_SIGN
+	"90"
+	OP_ADD;
+
+// const char s03[] PROGMEM = "===E1LOQE^";                           // ATAN
+const char s03[] PROGMEM = 
+	OP_PUSH
+	OP_PUSH
+	OP_PUSH
+	OP_MUL
+	"1"
+	OP_ADD
+	OP_SQRT
+	OP_INV
+	OP_MUL
+	OP_ASIN;
+
+// const char s04[] PROGMEM = ">I=1LIMIP>1LKH";                       // PV
+const char s04[] PROGMEM = 
+	OP_SIGN
+	OP_SWAP
+	OP_PUSH
+	"1"
+	OP_ADD
+	OP_SWAP
+	OP_ROTD
+	OP_SWAP
+	OP_POW
+	OP_SIGN
+	"1"
+	OP_ADD
+	OP_ROTU
+	OP_DIV;
+
+// const char s05[] PROGMEM = "1L===12EI10EQBQL1RHIP2:506628KOHE";    // GAMMA
+const char s05[] PROGMEM = 
+	"1"
+	OP_ADD
+	OP_PUSH
+	OP_PUSH
+	OP_PUSH
+	"12"
+	OP_MUL
+	OP_SWAP
+	"10"
+	OP_MUL
+	OP_INV
+	OP_SUB
+	OP_INV
+	OP_ADD
+	"1"
+	OP_EXP
+	OP_DIV
+	OP_SWAP
+	OP_POW
+	"2" OP_DOT "506628"
+	OP_ROTU
+	OP_SQRT
+	OP_DIV
+	OP_MUL;
+
+//const char s06[] PROGMEM = "R=Q>L2H";                              // SINH
+const char s06[] PROGMEM = 
+	OP_EXP
+	OP_PUSH
+	OP_INV
+	OP_SIGN
+	OP_ADD
+	"2"
+	OP_DIV;
+
+// const char s07[] PROGMEM = "R=QL2H";                               // COSH
+const char s07[] PROGMEM = 
+	OP_EXP
+	OP_PUSH
+	OP_INV
+	OP_ADD
+	"2"
+	OP_DIV; 
+
+// const char s08[] PROGMEM = "2ER1B=2LH";                            // TANH
+const char s08[] PROGMEM = 
+	"2"
+	OP_MUL
+	OP_EXP
+	"1"
+	OP_SUB
+	OP_PUSH
+	"2"
+	OP_ADD
+	OP_DIV;
+
+// const char s09[] PROGMEM = "==E1LOLS";                             // ASINH
+const char s09[] PROGMEM = 
+	OP_PUSH
+	OP_PUSH
+	OP_MUL
+	"1"
+	OP_ADD
+	OP_SQRT
+	OP_ADD
+	OP_LN;
+
+// const char s10[] PROGMEM = "==E1BOLS";                             // ACOSH
+const char s10[] PROGMEM = 
+	OP_PUSH
+	OP_PUSH
+	OP_MUL
+	"1"
+	OP_SUB
+	OP_SQRT
+	OP_ADD
+	OP_LN;
+
+// const char s11[] PROGMEM = "==1LI>1LHOS";                          // ATANH
+const char s11[] PROGMEM = 
+	OP_PUSH
+	OP_PUSH
+	"1"
+	OP_ADD
+	OP_SWAP
+	OP_SIGN
+	"1"
+	OP_ADD
+	OP_DIV
+	OP_SQRT
+	OP_LN;
+
 const char s12[] PROGMEM = "1AM==EMEMIOp";                         // SUM+
 const char s13[] PROGMEM = "===EE:07E>I1:6EBR1LQI=E>2HR:3989423E"; // ND
 const char s14[] PROGMEM = "=EI==MELO=MH^K";                       // R2P
@@ -126,7 +312,7 @@ const char s16[] PROGMEM = "IM=@H=ME>L@1BHOI";                     // STAT
 const char s17[] PROGMEM = "qEI@EK@EKrq=EsIMBMBKH===rqtKEB@HI";    // L.R.
 
 const char *const pstable[] PROGMEM = { s00, s01, s02, s03, s04, s05, s06, s07, s08, s09, s10, s11, s12, s13, s14, s15, s16, s17 };
-char playbuf[40]; // Holds sii[]
+char playbuf[40];
 
 
 
