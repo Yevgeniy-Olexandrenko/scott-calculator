@@ -709,7 +709,7 @@ void _tanh()
 
 #define MODE_CHAR   (128 - (DIGIT_WIDTH - 1))
 
-static void PrintStack(uint8_t i, uint8_t d, uint8_t s, uint8_t y)
+static void PrintStack(uint8_t i, int8_t d, uint8_t s, uint8_t y)
 {
 	float f = stack.arr[i];
 	PrintCharSize(CHAR_SIZE_M, s);
@@ -740,40 +740,42 @@ static void PrintStack(uint8_t i, uint8_t d, uint8_t s, uint8_t y)
 				m = (uint32_t)(f / Pow10(--e - (DIGITS - 1)) + 0.5f);
 			}
 
-			int8_t int_dig = 0, fra_dig, lead_z = 0;
-			if (abs(e) >= DIGITS)
+			int8_t int_dig = 1, lead_z = 0;
+			if (_abs(e) < DIGITS)
 			{
-				int_dig = 1;
+				if (e >= 0)
+				{
+					int_dig += e;
+				}
+				else
+				{
+					int_dig = 0;
+					lead_z -= e;
+					for (uint8_t n = lead_z; n--; m /= 10);
+				}
+				e = 0;
 			}
-			else if (e >= 0)
-			{
-				int_dig = 1 + e; e = 0;
-			}
-			else // e < 0
-			{
-				int_dig = 0; lead_z = -e; e = 0;
-				for (uint8_t n = lead_z; n--; m /= 10);
-			}
+			int8_t fra_dig = DIGITS - lead_z - int_dig;
 
-			i = M_DIGIT_LST; uint8_t nonzero = false;
-			for (fra_dig = DIGITS - lead_z - int_dig; fra_dig--; m /= 10, i -= DIGIT_WIDTH)
+			uint8_t x = M_DIGIT_LST, nonzero = false;
+			for (; fra_dig--; m /= 10, x -= DIGIT_WIDTH)
 			{
 				uint8_t ones = _ones(m);
 				if (ones || nonzero)
 				{
-					PrintCharAt('0' + ones, i, y);
+					PrintCharAt('0' + ones, x, y);
 					nonzero = true;
 				}
 			}
 
 			if (nonzero)
 			{
-				for (; --lead_z > 0; i -= DIGIT_WIDTH) PrintCharAt('0', i, y);
-				PrintCharAt('.', i, y);
+				for (; --lead_z > 0; x -= DIGIT_WIDTH) PrintCharAt('0', x, y);
+				PrintCharAt('.', x, y);
 			}
 			
-			PrintCharAt('0', i -= POINT_WIDTH, y);
-			for (; int_dig--; m /= 10, i -= DIGIT_WIDTH) PrintCharAt('0' + _ones(m), i, y);
+			PrintCharAt('0', x -= POINT_WIDTH, y);
+			for (; int_dig--; m /= 10, x -= DIGIT_WIDTH) PrintCharAt('0' + _ones(m), x, y);
 
 			if (e)
 			{
