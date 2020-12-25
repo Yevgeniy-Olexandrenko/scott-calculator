@@ -756,4 +756,8 @@ class __FlashStringHelper;
 #include "hw_display.h"
 #include "hw_clock.h"
 #include "sw_system.h"
+
+#include "sw_calc_math.h"
+#include "sw_calc_stack.h"
+#include "sw_calc_ops.h"
 #include "sw_calculator.h"

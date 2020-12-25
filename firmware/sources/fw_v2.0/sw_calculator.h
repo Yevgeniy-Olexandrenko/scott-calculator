@@ -7,43 +7,21 @@
 #define DIMOUT_FRAMES 156   // Frames before display dim out (about 10 sec)
 #define POWEROFF_FRAMES 469 // Frames before power off (about 30 sec)
 
-#define TINYNUMBER 1e-7	    // Number for rounding to 0
-#define MAXITERATE 100	    // Maximal number of Taylor series loops to iterate
+
 #define MENU_OPS_PER_LINE 3		// 3 function keys
 #define KEY_DUMMY 0xff	    // Needed to enter key-loop and printstring
 
 #define TYPEREC_STEPS 70	// Number of record steps per slot
 #define TYPEREC_SLOTS 3	    // Number of slots for recording
 
-#define BITEXP  1		    // Bit for exp()
-#define BITSIN  2		    // Bit for sin()
-#define BITASIN 4		    // Bit for asin
-
-#define _to_rad(x) ((x) * (PI / 180))
-#define _to_deg(x) ((x) * (180 / PI))
-
 static uint8_t EEMEM eeprom_brightness = 0xFF;
 static uint8_t EEMEM eeprom_comandkey[10];
 static float   EEMEM eeprom_constant[10];
 static uint8_t EEMEM eeprom_typerecord[TYPEREC_SLOTS][TYPEREC_STEPS];
 
-typedef struct 
-{
-	enum { X, Y, Z, T, M };
-    union
-	{
-		struct { float X, Y, Z, T, M; } reg;
-		float arr[5];
-	};
-} Stack;
-
-//#define STACK_SIZE (sizeof(Stack) / sizeof(float))
-#define STACK_SIZE 5
-
 static uint8_t  inCalcMode;
 static uint8_t  key;                   // Holds entered key
 static uint8_t  oldkey;                // Old key - use for debouncing
-static Stack    stack;                 // Float stack (XYZT) and memory
 static uint8_t  isNewNumber = true;    // True if stack has to be lifted before entering a new number
 static uint8_t  ispushed;              // True if stack was already pushed by ENTER
 static uint8_t  decimals;              // Number of decimals entered - used for input after decimal dot
@@ -58,7 +36,6 @@ static uint8_t  recIndex;              // Index of recording step
 static uint8_t  isTypeRecording;
 static uint8_t  isTypePlaying;                
 static float    sum[STACK_SIZE];	   // Memory to save statistic sums
-static Stack    shadow;                // Shadow memory (buffer) for stack
 static uint8_t  restore;               // Position of stack salvation (including mem)
 
 const char menu_str[] PROGMEM = 
@@ -76,10 +53,10 @@ const char menu_str[] PROGMEM =
 	"<1+" "<2+" "<3+"; // Play user keys
 #define NUM_OF_MENU_OPS 33
 
-const char message_str[] PROGMEM =
-	"\03" "ERR" "INF";
 #define MSG_ERR 0
 #define MSG_INF 1
+const char message_str[] PROGMEM =
+	"\03" "ERR" "INF";
 
 const char month_str[] PROGMEM = 
 	"\03"
@@ -336,25 +313,7 @@ void LoadStackFromShadowBuffer(uint8_t pos)
 	memcpy(&stack.arr[pos], &shadow.arr[pos], (STACK_SIZE - pos) * sizeof(float));
 }
 
- // PUSH
-void StackPush()
-{
-	// stack[4] -> not changed
-	// stack[2] -> stack[3]
-	// stack[1] -> stack[2]
-	// stack[0] -> stack[1]
-	memmove(&stack.reg.Y, &stack.reg.X, (STACK_SIZE - 2) * sizeof(float));
-}
 
-// PULL
-void StackPull()
-{
-	// stack[1] -> stack[0]
-	// stack[2] -> stack[1]
-	// stack[3] -> stack[2]
-	// stack[4] -> not changed
-	memcpy(&stack.reg.X, &stack.reg.Y, (STACK_SIZE - 2) * sizeof(float));
-}
 
 // PULLUPPER
 void StackPullUpper()
@@ -366,16 +325,7 @@ void StackPullUpper()
 	memcpy(&stack.reg.Y, &stack.reg.Z, (STACK_SIZE - 3) * sizeof(float));
 }
 
-void Store()
-{
-	stack.reg.M = stack.reg.X;
-}
 
-void Recall()
-{
-	StackPush();
-	stack.reg.X = stack.reg.M;
-}
 
 static bool GetIfStackRegInRange(uint8_t i, uint8_t min, uint8_t max, uint8_t & dest)
 {
@@ -437,37 +387,7 @@ void DivYX()
 	StackPullUpper();
 }
 
-// Math
-static float Pow10(int8_t e)
-{
-	float f = 1.f;
-	if (e > 0)
-		while (e--) f *= 10.f;
-	else
-		while (e++) f /= 10.f;
-	return f;
-}
 
-// Calculate exp, sin or asin
-static float _exp_sin_asin(float f, uint8_t nr)
-{								 // Calculate exp, sin or asin
-	float result = f, frac = f; // Start values for sin or asin
-	if (nr == BITEXP)
-		result = frac = 1.0; // Start values for exp
-	for (int i = 1; _abs(frac) > TINYNUMBER && i < MAXITERATE; i++)
-	{
-		int i2 = 2 * i, i2p = 2 * i + 1, i2m = 2 * i - 1, i2m2 = i2m * i2m;
-		float ffi2i2p = f * f / (i2 * i2p);
-		if (nr == BITEXP)
-			frac *= f / i; // Fraction for exp
-		else if (nr == BITSIN)
-			frac *= -ffi2i2p; // Fraction for sin
-		else
-			frac *= ffi2i2p * i2m2; // Fraction for asin
-		result += frac;
-	}
-	return (result);
-}
 
 // Function pointer array subroutines
 void _acos();
@@ -604,7 +524,7 @@ void _acosh()
 }
 void _asin()
 { // ASIN
-	stack.reg.X = _to_deg(_exp_sin_asin(stack.reg.X, BITASIN));
+	stack.reg.X = _to_deg(MathExpSinAsin(stack.reg.X, BITASIN));
 }
 void _asinh()
 { // ASINH
@@ -704,7 +624,7 @@ void _dot()
 }
 void EnterExponent()
 { // EE
-	stack.reg.X = Pow10(stack.reg.X);
+	stack.reg.X = MathPow10(stack.reg.X);
 	MulXY();
 	isNewNumber = true;
 }
@@ -715,7 +635,7 @@ void PushX()
 }
 void _exp()
 { // EXP
-	stack.reg.X = _exp_sin_asin(stack.reg.X, BITEXP);
+	stack.reg.X = MathExpSinAsin(stack.reg.X, BITEXP);
 }
 void _gamma()
 { // GAMMA
@@ -758,7 +678,7 @@ void EnterDigit()
 { // NUM Numeric input (0...9)
 	_newnumber();
 	if (decimals)
-		stack.reg.X += (key - KEY_B3_0) / Pow10(decimals++); // Append decimal to number
+		stack.reg.X += (key - KEY_B3_0) / MathPow10(decimals++); // Append decimal to number
 	else
 	{ // Append digit to number
 		stack.reg.X *= 10;
@@ -856,7 +776,7 @@ void _shadowload2()
 
 void _sin()
 { // SIN
-	stack.reg.X = _exp_sin_asin(_to_rad(stack.reg.X), BITSIN);
+	stack.reg.X = MathExpSinAsin(_to_rad(stack.reg.X), BITSIN);
 }
 void _sinh()
 { // SINH
@@ -937,11 +857,11 @@ static void PrintStack(uint8_t i, int8_t d, uint8_t s, uint8_t y)
 		else
 		{
 			int8_t e = (int8_t)(log(f) / log(10.f));
-			uint32_t m = (uint32_t)(f / Pow10(e - (DIGITS - 1)) + 0.5f);
+			uint32_t m = (uint32_t)(f / MathPow10(e - (DIGITS - 1)) + 0.5f);
 
-			if (m > 0 && m < Pow10(DIGITS - 1))
+			if (m > 0 && m < MathPow10(DIGITS - 1))
 			{
-				m = (uint32_t)(f / Pow10(--e - (DIGITS - 1)) + 0.5f);
+				m = (uint32_t)(f / MathPow10(--e - (DIGITS - 1)) + 0.5f);
 			}
 
 			int8_t int_dig = 1, lead_z = 0;
