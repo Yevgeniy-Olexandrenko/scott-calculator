@@ -8,7 +8,7 @@ static uint8_t  inCalcMode;
 static uint8_t  key;                   // Holds entered key
 static uint8_t  oldkey;                // Old key - use for debouncing
 static uint8_t  isNewNumber = true;    // True if stack has to be lifted before entering a new number
-static uint8_t  ispushed;              // True if stack was already pushed by ENTER
+static uint8_t  isPushed;              // True if stack was already pushed by ENTER
 static uint8_t  decimals;              // Number of decimals entered - used for input after decimal dot
 static uint8_t  isShift;               // true if f is pressed
 static uint8_t  isMenu;                // True if menu demanded
@@ -253,6 +253,7 @@ const char *const pstable[] PROGMEM =
 ////////////////////////////////////////////////////////////////////////////////
 
 static void Dispatch(uint8_t operation);
+static void CheckForNewInput();
 
 static bool GetIfStackRegInRange(uint8_t i, uint8_t min, uint8_t max, uint8_t & dest)
 {
@@ -350,16 +351,6 @@ void LoadStackFromShadowBuffer(uint8_t pos)
 	memcpy(&stack.arr[pos], &shadow.arr[pos], (STACK_SIZE - pos) * sizeof(float));
 }
 
-// PULLUPPER
-void StackPullUpper()
-{
-	// stack[0] -> not changed
-	// stack[2] -> stack[1]
-	// stack[3] -> stack[2]
-	// stack[4] -> not changed
-	memcpy(&stack.reg.Y, &stack.reg.Z, (STACK_SIZE - 3) * sizeof(float));
-}
-
 // PLAYSTRING
 void PlayString(uint8_t slot)
 {
@@ -368,18 +359,8 @@ void PlayString(uint8_t slot)
 	strcpy_P(playbuf, (char *)pgm_read_word(&(pstable[slot])));
 	select = 0;
 	isNewNumber = isPlayString = true;
-	ispushed = false;
+	isPushed = false;
 	decimals = 0;
-}
-
-void OpCLRX();
-void CheckForNewInput()
-{
-	if (isNewNumber)
-	{
-		if (!ispushed) StackPush();
-		OpCLRX();
-	}
 }
 
 void _sum2stack()
@@ -424,6 +405,32 @@ void _sum1()
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void OpADD()
+{
+	stack.reg.X += stack.reg.Y;
+	StackPullUpper();
+}
+
+static void OpSUB()
+{
+	stack.reg.X = stack.reg.Y - stack.reg.X;
+	StackPullUpper();
+}
+
+static void OpMUL()
+{
+	stack.reg.X *= stack.reg.Y;
+	StackPullUpper();
+}
+
+static void OpDIV()
+{
+	stack.reg.X = stack.reg.Y / stack.reg.X;
+	StackPullUpper();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static void OpCLRX()
 {
 	stack.reg.X = 0.f;
@@ -446,7 +453,6 @@ static void OpDOT()
 	}
 }
 
-static void OpMUL();
 static void OpEEXP()
 {
 	stack.reg.X = MathPow10(stack.reg.X);
@@ -454,22 +460,12 @@ static void OpEEXP()
 	isNewNumber = true;
 }
 
-static void EnterDigit(float digit)
-{
-	CheckForNewInput();
-	if (decimals)
-		digit /= MathPow10(decimals++);
-	else
-		stack.reg.X *= 10;
-	stack.reg.X += digit;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 static void OpPUSH()
 {
 	StackPush();
-	ispushed = true;
+	isPushed = true;
 	isNewNumber = true;
 }
 
@@ -504,32 +500,6 @@ static void OpRCL()
 {
 	StackPush();
 	stack.reg.X = stack.reg.M;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void OpADD()
-{
-	stack.reg.X += stack.reg.Y;
-	StackPullUpper();
-}
-
-static void OpSUB()
-{
-	stack.reg.X = stack.reg.Y - stack.reg.X;
-	StackPullUpper();
-}
-
-static void OpMUL()
-{
-	stack.reg.X *= stack.reg.Y;
-	StackPullUpper();
-}
-
-static void OpDIV()
-{
-	stack.reg.X = stack.reg.Y / stack.reg.X;
-	StackPullUpper();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -705,4 +675,23 @@ static void Dispatch(uint8_t operation)
 	};
 
 	(*dispatch[operation])();
+}
+
+static void CheckForNewInput()
+{
+	if (isNewNumber)
+	{
+		if (!isPushed) StackPush();
+		OpCLRX();
+	}
+}
+
+static void EnterDigit(float digit)
+{
+	CheckForNewInput();
+	if (decimals)
+		digit /= MathPow10(decimals++);
+	else
+		stack.reg.X *= 10;
+	stack.reg.X += digit;
 }

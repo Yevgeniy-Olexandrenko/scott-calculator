@@ -266,7 +266,7 @@ int main()
 					if (key <= KEY_C3_D && ((select == 0) || (select > 0 && playbuf[select - 1] > KEY_C3_D)))
 					{
 						isNewNumber = true;
-						ispushed = false;
+						isPushed = false;
 					}
 					select++;
 				}
@@ -334,7 +334,7 @@ int main()
 					else if (isShift)
 					{
 						Dispatch(5 + key - KEY_B3_0);
-						isShift = ispushed = false;
+						isShift = isPushed = false;
 						isNewNumber = true;
 					}
 
