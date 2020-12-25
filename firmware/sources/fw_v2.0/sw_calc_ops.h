@@ -33,7 +33,7 @@ static uint8_t EEMEM eeprom_typerecord[TYPEREC_SLOTS][TYPEREC_STEPS];
 #define OP_CLRX ";"
 #define OP_EEXP "<"
 #define OP_PUSH "="
-#define OP_SIGN ">"
+#define OP_CHS  ">"
 
 #define OP_BAT  "?"
 #define OP_RCL  "@"
@@ -88,7 +88,7 @@ const char PROG_TAN[] PROGMEM =
 	OP_PUSH
 	OP_PUSH
 	OP_MUL
-	OP_SIGN
+	OP_CHS
 	"1"
 	OP_ADD
 	OP_SQRT
@@ -96,7 +96,7 @@ const char PROG_TAN[] PROGMEM =
 
 const char PROG_ACOS[] PROGMEM = 
 	OP_ASIN
-	OP_SIGN
+	OP_CHS
 	"90"
 	OP_ADD;
 
@@ -113,7 +113,7 @@ const char PROG_ATAN[] PROGMEM =
 	OP_ASIN;
 
 const char PROG_PV[] PROGMEM = 
-	OP_SIGN
+	OP_CHS
 	OP_SWAP
 	OP_PUSH
 	"1"
@@ -122,7 +122,7 @@ const char PROG_PV[] PROGMEM =
 	OP_ROTD
 	OP_SWAP
 	OP_POW
-	OP_SIGN
+	OP_CHS
 	"1"
 	OP_ADD
 	OP_ROTU
@@ -158,7 +158,7 @@ const char PROG_SINH[] PROGMEM =
 	OP_EXP
 	OP_PUSH
 	OP_INV
-	OP_SIGN
+	OP_CHS
 	OP_ADD
 	"2"
 	OP_DIV;
@@ -208,7 +208,7 @@ const char PROG_ATANH[] PROGMEM =
 	"1"
 	OP_ADD
 	OP_SWAP
-	OP_SIGN
+	OP_CHS
 	"1"
 	OP_ADD
 	OP_DIV
@@ -303,140 +303,19 @@ void PlayString(uint8_t slot)
 	decimals = 0;
 }
 
-static void ReadBattery()
-{
-	StackPush();
-	uint16_t adc = ADCRead(_BV(MUX3) | _BV(MUX2), 10);
-	stack.reg.X = 1125.3f / adc;
-}
-
-static void PowerOff()
-{
-	// simulate automatic Power Off
-	frameCounter = POWEROFF_FRAMES;
-}
-
-static void AddXY()
-{
-	stack.reg.X += stack.reg.Y;
-	StackPullUpper();
-}
-
-static void SubYX()
-{
-	stack.reg.X = stack.reg.Y - stack.reg.X;
-	StackPullUpper();
-}
-
-static void MulXY()
-{
-	stack.reg.X *= stack.reg.Y;
-	StackPullUpper();
-}
-
-static void DivYX()
-{
-	stack.reg.X = stack.reg.Y / stack.reg.X;
-	StackPullUpper();
-}
-
-static void ClearX()
-{
-	stack.reg.X = 0.f;
-	isNewNumber = false;
-	decimals = 0;
-}
-
+void OpCLRX();
 void _newnumber()
 {
 	if (isNewNumber)
 	{
 		if (!ispushed) StackPush();
-		ClearX();
+		OpCLRX();
 	}
-}
-
-void PushX()
-{
-	StackPush();
-	ispushed = isNewNumber = true;
-}
-
-void SwapStackXY()
-{
-	float t_reg = stack.reg.X;
-	stack.reg.X = stack.reg.Y;
-	stack.reg.Y = t_reg;
-}
-
-static void Store()
-{
-	stack.reg.M = stack.reg.X;
-}
-
-static void Recall()
-{
-	StackPush();
-	stack.reg.X = stack.reg.M;
 }
 
 void _sum2stack()
 { // Copies sum[] to stack[] (including mem)
 	memmove(stack.arr, sum, sizeof(Stack));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-void _acos()
-{ // ACOS
-	PlayString(PSACOS);
-}
-void _acosh()
-{ // ACOSH
-	PlayString(PSACOSH);
-}
-void _asin()
-{ // ASIN
-	stack.reg.X = _to_deg(MathExpSinAsin(stack.reg.X, BITASIN));
-}
-void _asinh()
-{ // ASINH
-	PlayString(PSASINH);
-}
-void _atan()
-{ // ATAN
-	PlayString(PSATAN);
-}
-void _atanh()
-{ // ATANH
-	PlayString(PSATANH);
-}
-
-void ChangeSign()
-{ // CHS
-	stack.reg.X = -stack.reg.X;
-	isNewNumber = true;
-}
-
-
-
-static void UseCommandKey()
-{
-	uint8_t index;
-	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
-	{
-		StackPull();
-		Dispatch(eeprom_read_byte(&eeprom_comandkey[index]));
-	}
-}
-
-static void GetConstant()
-{
-	uint8_t index;
-	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
-	{
-		stack.reg.X = eeprom_read_float(&eeprom_constant[index]);
-	}
 }
 
 static void SetBrightness()
@@ -473,80 +352,6 @@ static void SetDate()
 	}
 }
 
-void _cos()
-{ // COS
-	PlayString(PSCOS);
-}
-void _cosh()
-{ // COSH
-	PlayString(PSCOSH);
-}
-
-void _dot()
-{
-	if(!decimals)
-	{
-		_newnumber();
-		decimals = 1;
-	}
-}
-void EnterExponent()
-{ // EE
-	stack.reg.X = MathPow10(stack.reg.X);
-	MulXY();
-	isNewNumber = true;
-}
-
-void _exp()
-{ // EXP
-	stack.reg.X = MathExpSinAsin(stack.reg.X, BITEXP);
-}
-void _gamma()
-{ // GAMMA
-	PlayString(PSGAMMA);
-}
-void _inv()
-{ // INV
-	stack.reg.X = 1 / stack.reg.X;
-}
-void _ln()
-{ // LN
-	stack.reg.X = log(stack.reg.X);
-}
-void _lr()
-{ // L.R.
-	PlayString(PSLR);
-}
-void _menu()
-{ // MENU
-	isMenu = true;
-	select = 0;
-}
-
-void _nd()
-{ // ND
-	PlayString(PSND);
-}
-
-
-void _nop() {} // NOP - no operation
-
-void EnterDigit()
-{ // NUM Numeric input (0...9)
-	_newnumber();
-	if (decimals)
-		stack.reg.X += (key - KEY_B3_0) / MathPow10(decimals++); // Append decimal to number
-	else
-	{ // Append digit to number
-		stack.reg.X *= 10;
-		stack.reg.X += key - KEY_B3_0;
-	}
-}
-void _p2r()
-{ // P2R
-	PlayString(PSP2R);
-}
-
 void _recplay()
 { // Prepare variables for REC or PLAY
 	recSlot = key - KEY_B2_1;
@@ -559,37 +364,11 @@ void _play()
 	isTypePlaying = isNewNumber = true;
 }
 
-
-
-static float _pow()
-{ // POW
-	SwapStackXY();
-	_ln();
-	MulXY();
-	_exp();
-}
-
-
-
-
-
-void _pv()
-{ // PV
-	PlayString(PSPV);
-}
-
-void _r2p()
-{ // R2P
-	PlayString(PSR2P);
-}
-
 void _rec()
 { // REC
 	_recplay();
 	isTypeRecording = true;
 }
-
-
 
 static void SetCommandKey()
 {
@@ -618,48 +397,276 @@ void _shadowload2()
 	LoadStackFromShadowBuffer(2);
 }
 
-void _sin()
+void OpRCL();
+void _sum1()
+{
+	for (uint8_t i = 0; i < STACK_SIZE; i++) sum[i] += stack.arr[i];
+	_sum2stack(); // Show n
+	OpRCL();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void OpROTD()
+{
+	float t_reg = stack.reg.X;
+	StackPull();
+	stack.reg.T = t_reg;
+}
+
+static void OpROTU()
+{
+	for (uint8_t i = 0; i < STACK_SIZE - 2; i++)
+	{
+		OpROTD();
+	}
+}
+
+void OpPUSH()
+{
+	StackPush();
+	ispushed = isNewNumber = true;
+}
+
+void OpSWAP()
+{
+	float t_reg = stack.reg.X;
+	stack.reg.X = stack.reg.Y;
+	stack.reg.Y = t_reg;
+}
+
+static void OpSTO()
+{
+	stack.reg.M = stack.reg.X;
+}
+
+static void OpRCL()
+{
+	StackPush();
+	stack.reg.X = stack.reg.M;
+}
+
+static void OpBAT()
+{
+	StackPush();
+	uint16_t adc = ADCRead(_BV(MUX3) | _BV(MUX2), 10);
+	stack.reg.X = 1125.3f / adc;
+}
+
+static void OpPOFF()
+{
+	// simulate automatic Power Off
+	frameCounter = POWEROFF_FRAMES;
+}
+
+static void OpADD()
+{
+	stack.reg.X += stack.reg.Y;
+	StackPullUpper();
+}
+
+static void OpSUB()
+{
+	stack.reg.X = stack.reg.Y - stack.reg.X;
+	StackPullUpper();
+}
+
+static void OpMUL()
+{
+	stack.reg.X *= stack.reg.Y;
+	StackPullUpper();
+}
+
+static void OpDIV()
+{
+	stack.reg.X = stack.reg.Y / stack.reg.X;
+	StackPullUpper();
+}
+
+static void OpCLRX()
+{
+	stack.reg.X = 0.f;
+	isNewNumber = false;
+	decimals = 0;
+}
+
+void OpACOS()
+{ // ACOS
+	PlayString(PSACOS);
+}
+void OpACSH()
+{ // ACOSH
+	PlayString(PSACOSH);
+}
+void OpASIN()
+{ // ASIN
+	stack.reg.X = _to_deg(MathExpSinAsin(stack.reg.X, BITASIN));
+}
+void OpASNH()
+{ // ASINH
+	PlayString(PSASINH);
+}
+void OpATAN()
+{ // ATAN
+	PlayString(PSATAN);
+}
+void OpATNH()
+{ // ATANH
+	PlayString(PSATANH);
+}
+
+void OpCHS()
+{ // CHS
+	stack.reg.X = -stack.reg.X;
+	isNewNumber = true;
+}
+
+static void OpCMD()
+{
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
+	{
+		StackPull();
+		Dispatch(eeprom_read_byte(&eeprom_comandkey[index]));
+	}
+}
+
+static void OpCST()
+{
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
+	{
+		stack.reg.X = eeprom_read_float(&eeprom_constant[index]);
+	}
+}
+
+void OpCOS()
+{ // COS
+	PlayString(PSCOS);
+}
+void OpCOSH()
+{ // COSH
+	PlayString(PSCOSH);
+}
+
+void OpDOT()
+{
+	if(!decimals)
+	{
+		_newnumber();
+		decimals = 1;
+	}
+}
+void OpEEXP()
+{ // EE
+	stack.reg.X = MathPow10(stack.reg.X);
+	OpMUL();
+	isNewNumber = true;
+}
+
+void OpEXP()
+{ // EXP
+	stack.reg.X = MathExpSinAsin(stack.reg.X, BITEXP);
+}
+void OpGAMM()
+{ // GAMMA
+	PlayString(PSGAMMA);
+}
+void OpINV()
+{ // INV
+	stack.reg.X = 1 / stack.reg.X;
+}
+void OpLN()
+{ // LN
+	stack.reg.X = log(stack.reg.X);
+}
+void OpLR()
+{ // L.R.
+	PlayString(PSLR);
+}
+void OpMENU()
+{ // MENU
+	isMenu = true;
+	select = 0;
+}
+
+void OpND()
+{ // ND
+	PlayString(PSND);
+}
+
+
+void OpNOP() {} // NOP - no operation
+
+void EnterDigit()
+{ // NUM Numeric input (0...9)
+	_newnumber();
+	if (decimals)
+		stack.reg.X += (key - KEY_B3_0) / MathPow10(decimals++); // Append decimal to number
+	else
+	{ // Append digit to number
+		stack.reg.X *= 10;
+		stack.reg.X += key - KEY_B3_0;
+	}
+}
+void OpP2R()
+{ // P2R
+	PlayString(PSP2R);
+}
+
+static float OpPOW()
+{ // POW
+	OpSWAP();
+	OpLN();
+	OpMUL();
+	OpEXP();
+}
+
+void OpPV()
+{ // PV
+	PlayString(PSPV);
+}
+
+void OpR2P()
+{ // R2P
+	PlayString(PSR2P);
+}
+
+void OpSIN()
 { // SIN
 	stack.reg.X = MathExpSinAsin(_to_rad(stack.reg.X), BITSIN);
 }
-void _sinh()
+void OpSINH()
 { // SINH
 	PlayString(PSSINH);
 }
 
-void _sqrt()
+void OpSQRT()
 { 
 	//if (stack.reg.X != 0.0)
 	//{
-		_ln();
+		OpLN();
 		stack.reg.X *= 0.5;
-		_exp();
+		OpEXP();
 	//}
 }
-void _stat()
+void OpSTAT()
 { // STAT
 	_sum2stack();
 	PlayString(PSSTAT);
 }
 
 
-void _sum()
+void OpSUM()
 { // SUM
 	PlayString(PSSUM);
 }
-void _sum1()
-{ // SUM addon
-	for (uint8_t i = 0; i < STACK_SIZE; i++) sum[i] += stack.arr[i];
-	_sum2stack(); // Show n
-	Recall();
-}
 
-
-void _tan()
+void OpTAN()
 { // TAN
 	PlayString(PSTAN);
 }
-void _tanh()
+void OpTANH()
 { // TANH
 	PlayString(PSTANH);
 }
@@ -673,55 +680,55 @@ static void Dispatch(uint8_t operation)
 	static void (*dispatch[])() = 
 	{
 		/* [ ] */ &EnterDigit,
-		/* [:] */ &_dot,
-		/* [;] */ &ClearX,
-		/* [<] */ &EnterExponent,
-		/* [=] */ &PushX,
-		/* [>] */ &ChangeSign,
+		/* [:] */ &OpDOT,
+		/* [;] */ &OpCLRX,
+		/* [<] */ &OpEEXP,
+		/* [=] */ &OpPUSH,
+		/* [>] */ &OpCHS,
 
 		// SHIFT + KEY operations:
-		/* [?] [0] */ &ReadBattery,
-		/* [@] [1] */ &Recall,
-		/* [A] [2] */ &Store,
-		/* [B] [3] */ &SubYX,
-		/* [C] [4] */ &GetConstant,
-		/* [D] [5] */ &UseCommandKey,
-		/* [E] [6] */ &MulXY,
-		/* [F] [7] */ &_menu,
-		/* [G] [8] */ &_sum,
-		/* [H] [9] */ &DivYX,
-		/* [I] [:] */ &SwapStackXY,
-		/* [J] [;] */ &PowerOff,
-		/* [K] [<] */ &RotateStackUp,
-		/* [L] [=] */ &AddXY,
-		/* [M] [>] */ &RotateStackDown,
-		/* [N] [?] */ &_nop,
+		/* [?] [0] */ &OpBAT,
+		/* [@] [1] */ &OpRCL,
+		/* [A] [2] */ &OpSTO,
+		/* [B] [3] */ &OpSUB,
+		/* [C] [4] */ &OpCST,
+		/* [D] [5] */ &OpCMD,
+		/* [E] [6] */ &OpMUL,
+		/* [F] [7] */ &OpMENU,
+		/* [G] [8] */ &OpSUM,
+		/* [H] [9] */ &OpDIV,
+		/* [I] [:] */ &OpSWAP,
+		/* [J] [;] */ &OpPOFF,
+		/* [K] [<] */ &OpROTU,
+		/* [L] [=] */ &OpADD,
+		/* [M] [>] */ &OpROTD,
+		/* [N] [?] */ &OpNOP,
 
 		// MENU operations:
-		/* [O] */ &_sqrt,
-		/* [P] */ &_pow,
-		/* [Q] */ &_inv,
-		/* [R] */ &_exp,
-		/* [S] */ &_ln,
-		/* [T] */ &_gamma,
-		/* [U] */ &_r2p,
-		/* [V] */ &_p2r,
-		/* [W] */ &_pv,
-		/* [X] */ &_nd,
-		/* [Y] */ &_stat,
-		/* [Z] */ &_lr,
-		/* [[] */ &_sin,
-		/* [\] */ &_cos,
-		/* []] */ &_tan,
-		/* [^] */ &_asin,
-		/* [_] */ &_acos,
-		/* [`] */ &_atan,
-		/* [a] */ &_sinh,
-		/* [b] */ &_cosh,
-		/* [c] */ &_tanh,
-		/* [d] */ &_asinh,
-		/* [e] */ &_acosh,
-		/* [f] */ &_atanh,
+		/* [O] */ &OpSQRT,
+		/* [P] */ &OpPOW,
+		/* [Q] */ &OpINV,
+		/* [R] */ &OpEXP,
+		/* [S] */ &OpLN,
+		/* [T] */ &OpGAMM,
+		/* [U] */ &OpR2P,
+		/* [V] */ &OpP2R,
+		/* [W] */ &OpPV,
+		/* [X] */ &OpND,
+		/* [Y] */ &OpSTAT,
+		/* [Z] */ &OpLR,
+		/* [[] */ &OpSIN,
+		/* [\] */ &OpCOS,
+		/* []] */ &OpTAN,
+		/* [^] */ &OpASIN,
+		/* [_] */ &OpACOS,
+		/* [`] */ &OpATAN,
+		/* [a] */ &OpSINH,
+		/* [b] */ &OpCOSH,
+		/* [c] */ &OpTANH,
+		/* [d] */ &OpASNH,
+		/* [e] */ &OpACSH,
+		/* [f] */ &OpATNH,
 		/* [g] */ &SetConstant,
 		/* [h] */ &SetCommandKey,
 		/* [i] */ &SetBrightness,
