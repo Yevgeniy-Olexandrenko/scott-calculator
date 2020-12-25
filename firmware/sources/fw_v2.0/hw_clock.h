@@ -76,27 +76,15 @@ static uint8_t rtc_date    = BUILD_DAY;   // 1 - 31
 static uint8_t rtc_month   = BUILD_MONTH; // 1 - 12
 static uint8_t rtc_year    = BUILD_YEAR;  // 0 - 99
 
-#if 1
-uint8_t decode_bcd(uint8_t num)
+static uint8_t decode_bcd(uint8_t num)
 {
   return (num / 16 * 10) + (num % 16);
 }
 
-uint8_t encode_bcd(uint8_t num)
+static uint8_t encode_bcd(uint8_t num)
 {
   return (num / 10 * 16) + (num % 10);
 }
-#else
-static uint8_t decode_bcd(uint8_t x)
-{
-	return ((x >> 4) * 10 + (x & 0x0F));
-}
-
-static uint8_t encode_bcd(uint8_t x)
-{
-	return ((((x / 10) & 0x0F) << 4) + (x % 10));
-}
-#endif
 
 static bool RTCRead()
 {

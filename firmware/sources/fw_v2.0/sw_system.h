@@ -167,27 +167,21 @@ static uint8_t expand2bit(uint8_t b)
 	return b;
 }
 
-static void PrintChar(uint8_t c)
+static void PrintCharAt(uint8_t c, uint8_t x, uint8_t y)
 {
-	for (uint8_t h = 0; h < ch; ++h)
+	for (uint8_t cy = 0; cy < ch; ++cy)
 	{
-		if (h > 0) DisplayPosition(dx, ++dy);
-		for (uint8_t w = 0; w < FONT_WIDTH; ++w)
+		DisplayPosition(x, y + cy);
+		for (uint8_t i = 0; i < FONT_WIDTH; ++i)
 		{
-			uint8_t bitmap = eeprom_read_byte(&eeprom_font[FONT_WIDTH * (c - FONT_OFFSET) + w]);
+			uint8_t bitmap = eeprom_read_byte(&eeprom_font[FONT_WIDTH * (c - FONT_OFFSET) + i]);
 			if (ch == CHAR_SIZE_M)
-				bitmap = expand4bit((bitmap >> (h << 2)) & 0x0f); // Expand 0000abcd
+				bitmap = expand4bit((bitmap >> (cy << 2)) & 0x0f); // Expand 0000abcd
 			else if (ch == CHAR_SIZE_L)
-				bitmap = expand2bit((bitmap >> (h << 1)) & 0x03); // Expand 000000ab
+				bitmap = expand2bit((bitmap >> (cy << 1)) & 0x03); // Expand 000000ab
 			DisplayWrite(bitmap, cw);
 		}
 	}
-}
-
-static void PrintCharAt(uint8_t c, uint8_t x, uint8_t y)
-{
-	DisplayPosition(x, y);
-	PrintChar(c);
 }
 
 static void PrintStringAt(const __FlashStringHelper* s, uint8_t i, uint8_t x, uint8_t y)

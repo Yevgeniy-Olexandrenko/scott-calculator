@@ -6,8 +6,7 @@
 #define DISPLAY_WIDTH   128 
 #define DISPLAY_PAGES   4
 
-static uint8_t dx = 0, dy = 0;
-static uint8_t renderram = 0xB4, drawram = 0x40;
+static uint8_t renderRAM = 0xB4, drawRAM = 0x40;
 
 static const uint8_t ssd1306_init_sequence[] PROGMEM =
 {
@@ -100,9 +99,8 @@ static void DisplayBrightness(uint8_t brightness)
 
 static void DisplayPosition(uint8_t x, uint8_t y)
 { 
-	dx = x;	dy = y;
 	ssd1306_command_start();
-	ssd1306_send_byte(renderram | (y & 0x07));
+	ssd1306_send_byte(renderRAM | (y & 0x07));
 	ssd1306_send_byte(0x10 | (x >> 4));
 	ssd1306_send_byte(x & 0x0f);
 	ssd1306_send_stop();
@@ -126,7 +124,7 @@ static void DisplayClear()
 
 static void DisplayRefresh()
 {
-	drawram ^= 0x20;
-	ssd1306_send_command(drawram);
-	renderram ^= 0x04;
+	drawRAM ^= 0x20;
+	ssd1306_send_command(drawRAM);
+	renderRAM ^= 0x04;
 }
