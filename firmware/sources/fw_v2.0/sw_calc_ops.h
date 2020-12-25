@@ -254,32 +254,6 @@ const char *const pstable[] PROGMEM =
 
 static void Dispatch(uint8_t operation);
 
-// Save stack to shadow buffer (including mem)
-void SaveStackToShadowBuffer()
-{ 
-	memcpy(&shadow, &stack, sizeof(Stack));
-}
-
-// Load higher stack from shadow buffer
-void LoadStackFromShadowBuffer(uint8_t pos)
-{ 
-	memcpy(&stack.arr[pos], &shadow.arr[pos], (STACK_SIZE - pos) * sizeof(float));
-}
-
-
-
-// PULLUPPER
-void StackPullUpper()
-{
-	// stack[0] -> not changed
-	// stack[2] -> stack[1]
-	// stack[3] -> stack[2]
-	// stack[4] -> not changed
-	memcpy(&stack.reg.Y, &stack.reg.Z, (STACK_SIZE - 3) * sizeof(float));
-}
-
-
-
 static bool GetIfStackRegInRange(uint8_t i, uint8_t min, uint8_t max, uint8_t & dest)
 {
 	if (stack.arr[i] >= min && stack.arr[i] <= max)
@@ -289,33 +263,6 @@ static bool GetIfStackRegInRange(uint8_t i, uint8_t min, uint8_t max, uint8_t & 
 	}
 	stack.arr[i] = NAN;
 	return false;
-}
-
-// PLAYSTRING
-void PlayString(uint8_t slot)
-{
-	restore = slot >= RESTORE2 ? 2 : 1;
-	SaveStackToShadowBuffer();
-	strcpy_P(playbuf, (char *)pgm_read_word(&(pstable[slot])));
-	select = 0;
-	isNewNumber = isPlayString = true;
-	ispushed = false;
-	decimals = 0;
-}
-
-void OpCLRX();
-void _newnumber()
-{
-	if (isNewNumber)
-	{
-		if (!ispushed) StackPush();
-		OpCLRX();
-	}
-}
-
-void _sum2stack()
-{ // Copies sum[] to stack[] (including mem)
-	memmove(stack.arr, sum, sizeof(Stack));
 }
 
 static void SetBrightness()
@@ -352,24 +299,6 @@ static void SetDate()
 	}
 }
 
-void _recplay()
-{ // Prepare variables for REC or PLAY
-	recSlot = key - KEY_B2_1;
-	recIndex = 0;
-}
-
-void _play()
-{ // PLAY
-	_recplay();
-	isTypePlaying = isNewNumber = true;
-}
-
-void _rec()
-{ // REC
-	_recplay();
-	isTypeRecording = true;
-}
-
 static void SetCommandKey()
 {
 	uint8_t index;
@@ -386,6 +315,94 @@ static void SetConstant()
 	{
 		eeprom_write_float(&eeprom_constant[index], stack.reg.Y);
 	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Save stack to shadow buffer (including mem)
+void SaveStackToShadowBuffer()
+{ 
+	memcpy(&shadow, &stack, sizeof(Stack));
+}
+
+// Load higher stack from shadow buffer
+void LoadStackFromShadowBuffer(uint8_t pos)
+{ 
+	memcpy(&stack.arr[pos], &shadow.arr[pos], (STACK_SIZE - pos) * sizeof(float));
+}
+
+// PULLUPPER
+void StackPullUpper()
+{
+	// stack[0] -> not changed
+	// stack[2] -> stack[1]
+	// stack[3] -> stack[2]
+	// stack[4] -> not changed
+	memcpy(&stack.reg.Y, &stack.reg.Z, (STACK_SIZE - 3) * sizeof(float));
+}
+
+// PLAYSTRING
+void PlayString(uint8_t slot)
+{
+	restore = slot >= RESTORE2 ? 2 : 1;
+	SaveStackToShadowBuffer();
+	strcpy_P(playbuf, (char *)pgm_read_word(&(pstable[slot])));
+	select = 0;
+	isNewNumber = isPlayString = true;
+	ispushed = false;
+	decimals = 0;
+}
+
+void OpCLRX();
+void CheckForNewInput()
+{
+	if (isNewNumber)
+	{
+		if (!ispushed) StackPush();
+		OpCLRX();
+	}
+}
+
+void _sum2stack()
+{ // Copies sum[] to stack[] (including mem)
+	memmove(stack.arr, sum, sizeof(Stack));
+}
+
+void _recplay()
+{
+	recSlot = key - KEY_B2_1;
+	recIndex = 0;
+}
+
+void _play()
+{
+	_recplay();
+	isTypePlaying = isNewNumber = true;
+}
+
+void _rec()
+{
+	_recplay();
+	isTypeRecording = true;
 }
 
 void _shadowload1()
@@ -407,6 +424,62 @@ void _sum1()
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void OpCLRX()
+{
+	stack.reg.X = 0.f;
+	isNewNumber = false;
+	decimals = 0;
+}
+
+static void OpCHS()
+{
+	stack.reg.X = -stack.reg.X;
+	isNewNumber = true;
+}
+
+static void OpDOT()
+{
+	if (!decimals)
+	{
+		CheckForNewInput();
+		decimals = 1;
+	}
+}
+
+static void OpMUL();
+static void OpEEXP()
+{
+	stack.reg.X = MathPow10(stack.reg.X);
+	OpMUL();
+	isNewNumber = true;
+}
+
+static void EnterDigit(float digit)
+{
+	CheckForNewInput();
+	if (decimals)
+		digit /= MathPow10(decimals++);
+	else
+		stack.reg.X *= 10;
+	stack.reg.X += digit;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void OpPUSH()
+{
+	StackPush();
+	ispushed = true;
+	isNewNumber = true;
+}
+
+static void OpSWAP()
+{
+	float t_reg = stack.reg.X;
+	stack.reg.X = stack.reg.Y;
+	stack.reg.Y = t_reg;
+}
+
 static void OpROTD()
 {
 	float t_reg = stack.reg.X;
@@ -422,19 +495,6 @@ static void OpROTU()
 	}
 }
 
-void OpPUSH()
-{
-	StackPush();
-	ispushed = isNewNumber = true;
-}
-
-void OpSWAP()
-{
-	float t_reg = stack.reg.X;
-	stack.reg.X = stack.reg.Y;
-	stack.reg.Y = t_reg;
-}
-
 static void OpSTO()
 {
 	stack.reg.M = stack.reg.X;
@@ -446,18 +506,7 @@ static void OpRCL()
 	stack.reg.X = stack.reg.M;
 }
 
-static void OpBAT()
-{
-	StackPush();
-	uint16_t adc = ADCRead(_BV(MUX3) | _BV(MUX2), 10);
-	stack.reg.X = 1125.3f / adc;
-}
-
-static void OpPOFF()
-{
-	// simulate automatic Power Off
-	frameCounter = POWEROFF_FRAMES;
-}
+////////////////////////////////////////////////////////////////////////////////
 
 static void OpADD()
 {
@@ -483,42 +532,89 @@ static void OpDIV()
 	StackPullUpper();
 }
 
-static void OpCLRX()
+////////////////////////////////////////////////////////////////////////////////
+
+static void OpLN()  { stack.reg.X = log(stack.reg.X); }
+static void OpEXP() { stack.reg.X = MathExpSinAsin(stack.reg.X, BITEXP); }
+static void OpINV() { stack.reg.X = 1.f / stack.reg.X; }
+
+static void OpPOW()
 {
-	stack.reg.X = 0.f;
-	isNewNumber = false;
-	decimals = 0;
+	OpSWAP();
+	OpLN();
+	OpMUL();
+	OpEXP();
 }
 
-void OpACOS()
-{ // ACOS
-	PlayString(PSACOS);
-}
-void OpACSH()
-{ // ACOSH
-	PlayString(PSACOSH);
-}
-void OpASIN()
-{ // ASIN
-	stack.reg.X = _to_deg(MathExpSinAsin(stack.reg.X, BITASIN));
-}
-void OpASNH()
-{ // ASINH
-	PlayString(PSASINH);
-}
-void OpATAN()
-{ // ATAN
-	PlayString(PSATAN);
-}
-void OpATNH()
-{ // ATANH
-	PlayString(PSATANH);
+static void OpSQRT()
+{ 
+	if (stack.reg.X != 0)
+	{
+		OpLN();
+		stack.reg.X *= 0.5f;
+		OpEXP();
+	}
 }
 
-void OpCHS()
-{ // CHS
-	stack.reg.X = -stack.reg.X;
-	isNewNumber = true;
+static void OpSTAT() 
+{
+	_sum2stack();
+	PlayString(PSSTAT);
+}
+
+static void OpGAMM() { PlayString(PSGAMMA); }
+static void OpR2P()  { PlayString(PSR2P); }
+static void OpP2R()  { PlayString(PSP2R); }
+static void OpPV()   { PlayString(PSPV); }
+static void OpND()   { PlayString(PSND); }
+static void OpLR()   { PlayString(PSLR); }
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void OpSIN() { stack.reg.X = MathExpSinAsin(_to_rad(stack.reg.X), BITSIN); }
+static void OpCOS() { PlayString(PSCOS); }
+static void OpTAN() { PlayString(PSTAN); }
+
+static void OpASIN() { stack.reg.X = _to_deg(MathExpSinAsin(stack.reg.X, BITASIN)); }
+static void OpACOS() { PlayString(PSACOS); }
+static void OpATAN() { PlayString(PSATAN); }
+
+static void OpSINH() { PlayString(PSSINH); }
+static void OpCOSH() { PlayString(PSCOSH); }
+static void OpTANH() { PlayString(PSTANH); }
+
+static void OpASNH() { PlayString(PSASINH); }
+static void OpACSH() { PlayString(PSACOSH); }
+static void OpATNH() { PlayString(PSATANH); }
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void OpPOFF()
+{
+	// simulate automatic Power Off
+	frameCounter = POWEROFF_FRAMES;
+}
+
+static void OpMENU()
+{
+	isMenu = true;
+	select = 0;
+}
+
+static void OpBAT()
+{
+	StackPush();
+	uint16_t adc = ADCRead(_BV(MUX3) | _BV(MUX2), 10);
+	stack.reg.X = 1125.3f / adc;
+}
+
+static void OpCST()
+{
+	uint8_t index;
+	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
+	{
+		stack.reg.X = eeprom_read_float(&eeprom_constant[index]);
+	}
 }
 
 static void OpCMD()
@@ -531,155 +627,16 @@ static void OpCMD()
 	}
 }
 
-static void OpCST()
-{
-	uint8_t index;
-	if (GetIfStackRegInRange(Stack::X, 0, 9, index))
-	{
-		stack.reg.X = eeprom_read_float(&eeprom_constant[index]);
-	}
-}
-
-void OpCOS()
-{ // COS
-	PlayString(PSCOS);
-}
-void OpCOSH()
-{ // COSH
-	PlayString(PSCOSH);
-}
-
-void OpDOT()
-{
-	if(!decimals)
-	{
-		_newnumber();
-		decimals = 1;
-	}
-}
-void OpEEXP()
-{ // EE
-	stack.reg.X = MathPow10(stack.reg.X);
-	OpMUL();
-	isNewNumber = true;
-}
-
-void OpEXP()
-{ // EXP
-	stack.reg.X = MathExpSinAsin(stack.reg.X, BITEXP);
-}
-void OpGAMM()
-{ // GAMMA
-	PlayString(PSGAMMA);
-}
-void OpINV()
-{ // INV
-	stack.reg.X = 1 / stack.reg.X;
-}
-void OpLN()
-{ // LN
-	stack.reg.X = log(stack.reg.X);
-}
-void OpLR()
-{ // L.R.
-	PlayString(PSLR);
-}
-void OpMENU()
-{ // MENU
-	isMenu = true;
-	select = 0;
-}
-
-void OpND()
-{ // ND
-	PlayString(PSND);
-}
-
-
-void OpNOP() {} // NOP - no operation
-
-void EnterDigit()
-{ // NUM Numeric input (0...9)
-	_newnumber();
-	if (decimals)
-		stack.reg.X += (key - KEY_B3_0) / MathPow10(decimals++); // Append decimal to number
-	else
-	{ // Append digit to number
-		stack.reg.X *= 10;
-		stack.reg.X += key - KEY_B3_0;
-	}
-}
-void OpP2R()
-{ // P2R
-	PlayString(PSP2R);
-}
-
-static float OpPOW()
-{ // POW
-	OpSWAP();
-	OpLN();
-	OpMUL();
-	OpEXP();
-}
-
-void OpPV()
-{ // PV
-	PlayString(PSPV);
-}
-
-void OpR2P()
-{ // R2P
-	PlayString(PSR2P);
-}
-
-void OpSIN()
-{ // SIN
-	stack.reg.X = MathExpSinAsin(_to_rad(stack.reg.X), BITSIN);
-}
-void OpSINH()
-{ // SINH
-	PlayString(PSSINH);
-}
-
-void OpSQRT()
-{ 
-	//if (stack.reg.X != 0.0)
-	//{
-		OpLN();
-		stack.reg.X *= 0.5;
-		OpEXP();
-	//}
-}
-void OpSTAT()
-{ // STAT
-	_sum2stack();
-	PlayString(PSSTAT);
-}
-
-
-void OpSUM()
-{ // SUM
-	PlayString(PSSUM);
-}
-
-void OpTAN()
-{ // TAN
-	PlayString(PSTAN);
-}
-void OpTANH()
-{ // TANH
-	PlayString(PSTANH);
-}
+static void OpSUM() { PlayString(PSSUM); }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
+static void OpNOP() {}
 
 static void Dispatch(uint8_t operation)
 {
 	static void (*dispatch[])() = 
 	{
-		/* [ ] */ &EnterDigit,
 		/* [:] */ &OpDOT,
 		/* [;] */ &OpCLRX,
 		/* [<] */ &OpEEXP,

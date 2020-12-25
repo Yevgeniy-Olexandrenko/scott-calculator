@@ -325,7 +325,7 @@ int main()
 						else if (key >= KEY_B2_1 && key <= KEY_D2_3)
 						{
 							uint8_t index = select * MENU_OPS_PER_LINE + (key - KEY_B2_1);
-							Dispatch(22 + index);
+							Dispatch(21 + index);
 							isNewNumber = true;
 							isMenu = false;
 						}
@@ -333,7 +333,7 @@ int main()
 
 					else if (isShift)
 					{
-						Dispatch(6 + key - KEY_B3_0);
+						Dispatch(5 + key - KEY_B3_0);
 						isShift = ispushed = false;
 						isNewNumber = true;
 					}
@@ -341,9 +341,9 @@ int main()
 					else
 					{
 						if (key > KEY_D0_9) 
-							Dispatch(key - KEY_D0_9);
+							Dispatch(key - KEY_C3_D);
 						else
-							Dispatch(0);
+							EnterDigit(key - KEY_B3_0);
 					}
 				}
 				PrintCalculator();
