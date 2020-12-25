@@ -32,13 +32,17 @@ static void StackPull()
 	memcpy(&stack.reg.X, &stack.reg.Y, (STACK_SIZE - 2) * sizeof(float));
 }
 
-static void Store()
+static void RotateStackDown()
 {
-	stack.reg.M = stack.reg.X;
+	float t_reg = stack.reg.X;
+	StackPull();
+	stack.reg.T = t_reg;
 }
 
-static void Recall()
+static void RotateStackUp()
 {
-	StackPush();
-	stack.reg.X = stack.reg.M;
+	for (uint8_t i = 0; i < STACK_SIZE - 2; i++)
+	{
+		RotateStackDown();
+	}
 }
